@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentMethod {
+  ONLINE
+  BANK_TRANSFER
+}
+
+enum RegistrationType {
+  CHURCH
+  INDIVIDUAL
+}
+
+model Registration {
+  id                String           @id @default(cuid())
+  registrationId    String           @unique // Custom format e.g. AOG100-XXXX
+  type              RegistrationType
+  category          String           // very-large-church, small-church, individual, etc.
+  
+  // Contact Info
+  email             String
+  phone             String?
+  
+  // Specific Data (JSON for flexibility between Church/Individual)
+  formData          Json
+  
+  // Attendees
+  numberOfAttendees Int              @default(1)
+  attendees         Attendee[]
+  
+  // Venue
+  venueId           String
+  
+  // Payment
+  fee               Float
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus    @default(PENDING)
+  paymentSessionId  String?          // For ANZ eGate
+  paymentRef        String?          // Success Indicator or Bank Ref
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([registrationId])
+  @@index([email])
+}
+
+model Attendee {
+  id             String       @id @default(cuid())
+  registrationId String
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String?
+  
+  createdAt      DateTime     @default(now())
+}
+
+model Venue {
+  id                  String   @id
+  name                String
+  capacity            Int
+  currentRegistrations Int      @default(0)
+}
