@@ -7,7 +7,7 @@ const globalForPrisma = global as unknown as { prisma: PrismaClient }
 const connectionString = process.env.DATABASE_URL
 const pool = new pg.Pool({ 
   connectionString,
-  ssl: connectionString?.includes('sslmode=disable') ? false : { rejectUnauthorized: false }
+  ssl: false
 })
 const adapter = new PrismaPg(pool as any)
 
