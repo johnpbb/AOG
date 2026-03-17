@@ -49,6 +49,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, id: registration.id });
   } catch (error: any) {
     console.error("Database Save Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error : undefined
+    }, { status: 500 });
   }
 }
