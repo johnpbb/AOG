@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,92 +17,70 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Filter, Eye, MoreHorizontal, Download } from "lucide-react";
+import { Search, Filter, Eye, MoreHorizontal, Download, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// Mock data
-const mockRegistrations = [
-  {
-    id: "AOG100-ABC123",
-    name: "First Assembly Suva",
-    category: "Large Church",
-    attendees: 45,
-    email: "pastor@firstassembly.fj",
-    phone: "+679 123 4567",
-    venue: "Main Arena",
-    payment: "Confirmed",
-    date: "2026-03-01",
-  },
-  {
-    id: "AOG100-DEF456",
-    name: "John Doe",
-    category: "Individual",
-    attendees: 1,
-    email: "john@email.com",
-    phone: "+679 234 5678",
-    venue: "Conference Hall",
-    payment: "Pending",
-    date: "2026-03-02",
-  },
-  {
-    id: "AOG100-GHI789",
-    name: "Grace Church Nadi",
-    category: "Medium Church",
-    attendees: 28,
-    email: "info@gracechurch.fj",
-    phone: "+679 345 6789",
-    venue: "Main Arena",
-    payment: "Confirmed",
-    date: "2026-03-02",
-  },
-  {
-    id: "AOG100-JKL012",
-    name: "Jane Smith",
-    category: "WFC Partner",
-    attendees: 1,
-    email: "jane@mission.org",
-    phone: "+679 456 7890",
-    venue: "Conference Hall",
-    payment: "Confirmed",
-    date: "2026-03-03",
-  },
-  {
-    id: "AOG100-MNO345",
-    name: "Living Waters Church",
-    category: "Small Church",
-    attendees: 15,
-    email: "pastor@livingwaters.fj",
-    phone: "+679 567 8901",
-    venue: "Overflow Venue",
-    payment: "Pending",
-    date: "2026-03-03",
-  },
-];
+import { format } from "date-fns";
 
 export function RegistrationsList() {
+  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
 
-  const filteredRegistrations = mockRegistrations.filter((reg) => {
+  useEffect(() => {
+    fetchRegistrations();
+  }, []);
+
+  const fetchRegistrations = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/admin/registrations');
+      if (res.ok) {
+        const data = await res.json();
+        setRegistrations(data);
+      }
+    } catch (error) {
+      console.error("Error fetching registrations:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredRegistrations = registrations.filter((reg) => {
+    const formData = reg.formData || {};
+    const firstName = formData.firstName || "";
+    const lastName = formData.lastName || "";
+    const name = `${firstName} ${lastName}`.trim() || reg.email;
+
     const matchesSearch =
-      reg.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reg.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reg.registrationId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       reg.email.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesCategory =
       categoryFilter === "all" || reg.category === categoryFilter;
 
     const matchesPayment =
-      paymentFilter === "all" || reg.payment === paymentFilter;
+      paymentFilter === "all" || 
+      (paymentFilter === "Confirmed" && reg.paymentStatus === "COMPLETED") ||
+      (paymentFilter === "Pending" && reg.paymentStatus === "PENDING");
 
     return matchesSearch && matchesCategory && matchesPayment;
   });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -141,14 +117,14 @@ export function RegistrationsList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="Very Large Church">Very Large Church</SelectItem>
-                <SelectItem value="Large Church">Large Church</SelectItem>
-                <SelectItem value="Medium Church">Medium Church</SelectItem>
-                <SelectItem value="Small Church">Small Church</SelectItem>
-                <SelectItem value="Church Plant">Church Plant</SelectItem>
-                <SelectItem value="WFC">World Fijian Congress</SelectItem>
-                <SelectItem value="WFC Partner">WFC Partner</SelectItem>
-                <SelectItem value="Individual">Individual</SelectItem>
+                <SelectItem value="very-large-church">Very Large Church</SelectItem>
+                <SelectItem value="large-church">Large Church</SelectItem>
+                <SelectItem value="medium-church">Medium Church</SelectItem>
+                <SelectItem value="small-church">Small Church</SelectItem>
+                <SelectItem value="church-plant">Church Plant</SelectItem>
+                <SelectItem value="wfc">World Fijian Congress</SelectItem>
+                <SelectItem value="wfc-partner">WFC Partner</SelectItem>
+                <SelectItem value="individual">Individual</SelectItem>
               </SelectContent>
             </Select>
             <Select value={paymentFilter} onValueChange={setPaymentFilter}>
@@ -188,56 +164,61 @@ export function RegistrationsList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRegistrations.map((reg) => (
-                  <TableRow key={reg.id}>
-                    <TableCell className="font-mono text-sm">{reg.id}</TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium text-foreground">{reg.name}</div>
-                        <div className="text-xs text-muted-foreground">{reg.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{reg.category}</span>
-                    </TableCell>
-                    <TableCell className="text-center">{reg.attendees}</TableCell>
-                    <TableCell>{reg.venue}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          reg.payment === "Confirmed"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {reg.payment}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {reg.date}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>Edit Registration</DropdownMenuItem>
-                          <DropdownMenuItem>Resend QR Code</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            Cancel Registration
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredRegistrations.map((reg) => {
+                  const formData = reg.formData || {};
+                  const name = `${formData.firstName || ""} ${formData.lastName || ""}`.trim() || reg.email;
+                  
+                  return (
+                    <TableRow key={reg.id}>
+                      <TableCell className="font-mono text-sm">{reg.registrationId}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium text-foreground">{name}</div>
+                          <div className="text-xs text-muted-foreground">{reg.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm capitalize">{reg.category.replace(/-/g, ' ')}</span>
+                      </TableCell>
+                      <TableCell className="text-center">{reg.numberOfAttendees}</TableCell>
+                      <TableCell className="capitalize">{reg.venueId.replace(/-/g, ' ')}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            reg.paymentStatus === "COMPLETED"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}
+                        >
+                          {reg.paymentStatus === "COMPLETED" ? "Confirmed" : "Pending"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {format(new Date(reg.createdAt), "yyyy-MM-dd")}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>Edit Registration</DropdownMenuItem>
+                            <DropdownMenuItem>Resend QR Code</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">
+                              Cancel Registration
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
