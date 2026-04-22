@@ -3,6 +3,7 @@
 import { CheckCircle, QrCode, Mail, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { QRCodeCanvas } from "qrcode.react";
 
 interface RegistrationSuccessProps {
   registrationId: string;
@@ -15,6 +16,21 @@ export function RegistrationSuccess({
   email,
   onNewRegistration,
 }: RegistrationSuccessProps) {
+  const downloadQRCode = () => {
+    const canvas = document.getElementById("qr-code-canvas") as HTMLCanvasElement;
+    if (canvas) {
+      const pngUrl = canvas
+        .toDataURL("image/png")
+        .replace("image/png", "image/octet-stream");
+      let downloadLink = document.createElement("a");
+      downloadLink.href = pngUrl;
+      downloadLink.download = `AOG-Registration-${registrationId}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  };
+
   return (
     <div className="text-center space-y-6 py-8">
       <div className="flex justify-center">
@@ -41,8 +57,14 @@ export function RegistrationSuccess({
       </div>
 
       <div className="flex flex-col items-center gap-4 p-6 rounded-lg border border-border bg-card max-w-sm mx-auto">
-        <div className="h-32 w-32 bg-secondary rounded-lg flex items-center justify-center">
-          <QrCode className="h-16 w-16 text-muted-foreground" />
+        <div className="p-4 bg-white rounded-lg shadow-sm border">
+          <QRCodeCanvas
+            id="qr-code-canvas"
+            value={registrationId}
+            size={160}
+            level={"H"}
+            includeMargin={true}
+          />
         </div>
         <p className="text-sm text-muted-foreground">
           Your QR code will be sent to{" "}
@@ -51,7 +73,7 @@ export function RegistrationSuccess({
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" onClick={downloadQRCode} className="gap-2">
           <Download className="h-4 w-4" />
           Download QR Code
         </Button>

@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { useEffect } from "react";
+
 interface CheckInResult {
   success: boolean;
   registrationId: string;
@@ -26,72 +28,104 @@ interface CheckInResult {
   alreadyCheckedIn?: boolean;
 }
 
-const recentCheckIns = [
-  {
-    id: "AOG100-ABC123",
-    name: "John Smith",
-    time: "2 min ago",
-    venue: "Main Arena",
-  },
-  {
-    id: "AOG100-DEF456",
-    name: "Grace Church",
-    time: "5 min ago",
-    venue: "Main Arena",
-  },
-  {
-    id: "AOG100-GHI789",
-    name: "Mary Johnson",
-    time: "8 min ago",
-    venue: "Conference Hall",
-  },
-];
-
 export function CheckInSystem() {
   const [manualId, setManualId] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [lastResult, setLastResult] = useState<CheckInResult | null>(null);
+  const [recentHistory, setRecentHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    let html5QrCode: any = null;
+
+    const startScanner = async () => {
+      try {
+        const { Html5Qrcode } = await import("html5-qrcode");
+        html5QrCode = new Html5Qrcode("reader");
+        
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        
+        await html5QrCode.start(
+          { facingMode: "environment" }, 
+          config, 
+          onScanSuccess
+        );
+      } catch (err) {
+        console.error("Failed to start scanner:", err);
+        setIsScanning(false);
+        setLastResult({
+           success: false,
+           registrationId: "",
+           name: "Scanner Error",
+           category: "",
+           venue: "",
+           message: "Could not access camera. Please ensure you are on a secure (HTTPS/localhost) connection and have granted camera permissions."
+        });
+      }
+    };
+
+    if (isScanning) {
+      startScanner();
+    }
+
+    return () => {
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch((err: any) => console.error("Failed to stop scanner:", err));
+      }
+    };
+  }, [isScanning]);
+
+  async function onScanSuccess(decodedText: string) {
+    setIsScanning(false);
+    performCheckIn(decodedText);
+  }
+
+  function onScanFailure(error: any) {
+    // console.warn(`Code scan error = ${error}`);
+  }
+
+  const performCheckIn = async (id: string) => {
+    try {
+      const response = await fetch("/api/admin/check-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationId: id }),
+      });
+
+      const data = await response.json();
+      setLastResult(data);
+
+      if (data.success) {
+        setRecentHistory((prev) => [
+          {
+            id: data.registrationId,
+            name: data.name,
+            time: "Just now",
+            venue: data.venue,
+          },
+          ...prev.slice(0, 4),
+        ]);
+      }
+    } catch (error) {
+      console.error("Check-in request failed:", error);
+      setLastResult({
+        success: false,
+        registrationId: id,
+        name: "Error",
+        category: "N/A",
+        venue: "N/A",
+        message: "Network error occurred",
+      });
+    }
+  };
 
   const handleManualCheckIn = () => {
     if (!manualId.trim()) return;
-
-    // Simulate check-in
-    const isValid = manualId.startsWith("AOG100-");
-    const alreadyCheckedIn = Math.random() > 0.8;
-
-    setLastResult({
-      success: isValid && !alreadyCheckedIn,
-      registrationId: manualId,
-      name: isValid ? "Sample Attendee" : "Unknown",
-      category: isValid ? "Individual" : "Unknown",
-      venue: "Main Arena",
-      message: !isValid
-        ? "Invalid registration ID"
-        : alreadyCheckedIn
-        ? "Already checked in at 10:30 AM"
-        : "Check-in successful!",
-      alreadyCheckedIn,
-    });
-
+    performCheckIn(manualId.trim());
     setManualId("");
   };
 
   const toggleScanner = () => {
     setIsScanning(!isScanning);
-    if (!isScanning) {
-      // Simulate QR scan after 2 seconds
-      setTimeout(() => {
-        setLastResult({
-          success: true,
-          registrationId: "AOG100-SCAN" + Date.now().toString(36).toUpperCase(),
-          name: "Scanned Attendee",
-          category: "Large Church",
-          venue: "Main Arena",
-          message: "Check-in successful!",
-        });
-        setIsScanning(false);
-      }, 2000);
-    }
   };
 
   return (
@@ -114,33 +148,27 @@ export function CheckInSystem() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Scanner Preview */}
-            <div
-              className={cn(
-                "aspect-square max-w-sm mx-auto rounded-lg border-2 border-dashed flex items-center justify-center transition-colors",
-                isScanning
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-secondary/30"
-              )}
-            >
-              {isScanning ? (
-                <div className="text-center">
-                  <div className="relative">
-                    <Camera className="h-16 w-16 text-primary animate-pulse" />
-                    <div className="absolute inset-0 border-2 border-primary rounded-lg animate-ping" />
-                  </div>
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    Scanning for QR code...
-                  </p>
+            {isScanning ? (
+              <div className="relative">
+                <div id="reader" className="w-full mx-auto overflow-hidden rounded-lg border-2 border-primary bg-black min-h-[300px]" />
+                <div className="absolute top-2 left-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded">
+                  Camera Active
                 </div>
-              ) : (
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  "aspect-square max-w-sm mx-auto rounded-lg border-2 border-dashed flex items-center justify-center transition-colors border-border bg-secondary/30"
+                )}
+              >
                 <div className="text-center p-8">
                   <QrCode className="h-16 w-16 text-muted-foreground mx-auto" />
                   <p className="mt-4 text-sm text-muted-foreground">
                     Click the button below to start scanning
                   </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             <Button
               onClick={toggleScanner}
@@ -256,39 +284,45 @@ export function CheckInSystem() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Clock className="h-5 w-5" />
-                Recent Check-Ins
+                Recent Activity
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {recentCheckIns.map((checkIn) => (
-                  <div
-                    key={checkIn.id}
-                    className="flex items-center justify-between py-2 border-b border-border last:border-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                {recentHistory.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No recent check-ins
+                  </p>
+                ) : (
+                  recentHistory.map((checkIn, idx) => (
+                    <div
+                      key={`${checkIn.id}-${idx}`}
+                      className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground text-sm">
+                            {checkIn.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {checkIn.id}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-foreground text-sm">
-                          {checkIn.name}
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">
+                          {checkIn.time}
                         </p>
-                        <p className="text-xs text-muted-foreground font-mono">
-                          {checkIn.id}
+                        <p className="text-xs text-muted-foreground">
+                          {checkIn.venue}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">
-                        {checkIn.time}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {checkIn.venue}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

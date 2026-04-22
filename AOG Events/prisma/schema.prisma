@@ -49,6 +49,7 @@ model Registration {
   paymentSessionId  String?          // For ANZ eGate
   paymentRef        String?          // Success Indicator or Bank Ref
   
+  checkedInAt       DateTime?        // When they scanned their QR code
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 

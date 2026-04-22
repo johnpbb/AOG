@@ -7,7 +7,12 @@ import { DashboardOverview } from "@/components/admin/dashboard-overview";
 import { RegistrationsList } from "@/components/admin/registrations-list";
 import { VenueManagement } from "@/components/admin/venue-management";
 import { ReportsExport } from "@/components/admin/reports-export";
-import { CheckInSystem } from "@/components/admin/check-in-system";
+import dynamic from "next/dynamic";
+
+const CheckInSystem = dynamic(
+  () => import("@/components/admin/check-in-system").then((mod) => mod.CheckInSystem),
+  { ssr: false }
+);
 
 type AdminView = "overview" | "registrations" | "venues" | "reports" | "checkin";
 
