@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Header } from "@/components/header";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { DashboardOverview } from "@/components/admin/dashboard-overview";
+import { EventManagement } from "@/components/admin/event-management";
 import { RegistrationsList } from "@/components/admin/registrations-list";
 import { VenueManagement } from "@/components/admin/venue-management";
 import { ReportsExport } from "@/components/admin/reports-export";
@@ -14,7 +15,7 @@ const CheckInSystem = dynamic(
   { ssr: false }
 );
 
-type AdminView = "overview" | "registrations" | "venues" | "reports" | "checkin";
+type AdminView = "overview" | "events" | "venues" | "registrations" | "reports" | "checkin";
 
 export default function AdminPage() {
   const [activeView, setActiveView] = useState<AdminView>("overview");
@@ -23,6 +24,8 @@ export default function AdminPage() {
     switch (activeView) {
       case "overview":
         return <DashboardOverview />;
+      case "events":
+        return <EventManagement />;
       case "registrations":
         return <RegistrationsList />;
       case "venues":
@@ -39,13 +42,11 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <div className="flex">
         <AdminSidebar activeView={activeView} onViewChange={setActiveView} />
-        
-        <main className="flex-1 p-6 md:p-8">
-          {renderContent()}
-        </main>
+
+        <main className="flex-1 p-6 md:p-8">{renderContent()}</main>
       </div>
     </div>
   );

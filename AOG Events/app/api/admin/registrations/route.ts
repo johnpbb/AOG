@@ -6,6 +6,8 @@ export async function GET() {
     const registrations = await prisma.registration.findMany({
       include: {
         attendees: true,
+        venue: { select: { id: true, name: true } },
+        tickets: { select: { id: true, ticketNumber: true, status: true } },
       },
       orderBy: {
         createdAt: 'desc',

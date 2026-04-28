@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Filter, Eye, MoreHorizontal, Download, Loader2 } from "lucide-react";
+import { Search, Filter, Eye, MoreHorizontal, Download, Loader2, XCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +33,7 @@ export function RegistrationsList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRegistrations();
@@ -49,6 +51,27 @@ export function RegistrationsList() {
       console.error("Error fetching registrations:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancel = async (reg: any) => {
+    const confirmed = window.confirm(
+      `Cancel registration ${reg.registrationId} for ${reg.venue?.name ?? "this venue"}?\n\n` +
+      `This will:\n• Mark the registration as Cancelled\n• Invalidate ${reg.tickets?.length ?? reg.numberOfAttendees} QR ticket(s)\n• Return seats to the venue pool\n\nThis cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setCancellingId(reg.id);
+    try {
+      const res = await fetch(`/api/admin/registrations/${reg.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to cancel");
+      // Refresh list
+      await fetchRegistrations();
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -156,7 +179,7 @@ export function RegistrationsList() {
                   <TableHead>Registration ID</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead className="text-center">Attendees</TableHead>
+                  <TableHead className="text-center">Tickets</TableHead>
                   <TableHead>Venue</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead>Date</TableHead>
@@ -169,7 +192,7 @@ export function RegistrationsList() {
                   const name = `${formData.firstName || ""} ${formData.lastName || ""}`.trim() || reg.email;
                   
                   return (
-                    <TableRow key={reg.id}>
+                    <TableRow key={reg.id} className={reg.paymentStatus === "CANCELLED" ? "opacity-50" : ""}>
                       <TableCell className="font-mono text-sm">{reg.registrationId}</TableCell>
                       <TableCell>
                         <div>
@@ -180,17 +203,28 @@ export function RegistrationsList() {
                       <TableCell>
                         <span className="text-sm capitalize">{reg.category.replace(/-/g, ' ')}</span>
                       </TableCell>
-                      <TableCell className="text-center">{reg.numberOfAttendees}</TableCell>
-                      <TableCell className="capitalize">{reg.venueId.replace(/-/g, ' ')}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-medium">{reg.tickets?.length ?? reg.numberOfAttendees}</span>
+                        {reg.tickets?.length > 0 && (
+                          <span className="text-xs text-muted-foreground ml-1">ticket{reg.tickets.length !== 1 ? "s" : ""}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{reg.venue?.name ?? reg.venueId}</span>
+                      </TableCell>
                       <TableCell>
                         <span
-                          className={`text-xs px-2 py-1 rounded-full ${
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${
                             reg.paymentStatus === "COMPLETED"
                               ? "bg-green-100 text-green-700"
+                              : reg.paymentStatus === "CANCELLED"
+                              ? "bg-gray-100 text-gray-500 line-through"
                               : "bg-yellow-100 text-yellow-700"
                           }`}
                         >
-                          {reg.paymentStatus === "COMPLETED" ? "Confirmed" : "Pending"}
+                          {reg.paymentStatus === "COMPLETED" ? "Confirmed"
+                            : reg.paymentStatus === "CANCELLED" ? "Cancelled"
+                            : "Pending"}
                         </span>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
@@ -208,10 +242,15 @@ export function RegistrationsList() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>Edit Registration</DropdownMenuItem>
                             <DropdownMenuItem>Resend QR Code</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              Cancel Registration
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              disabled={reg.paymentStatus === "CANCELLED" || cancellingId === reg.id}
+                              onClick={() => handleCancel(reg)}
+                            >
+                              {cancellingId === reg.id
+                                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Cancelling...</>
+                                : <><XCircle className="h-4 w-4 mr-2" />Cancel Registration</>}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

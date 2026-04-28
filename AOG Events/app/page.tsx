@@ -1,14 +1,29 @@
 import Link from "next/link";
 import { Header } from "@/components/header";
-import { ArrowRight, Calendar, MapPin, Users, Building2, Globe, Star } from "lucide-react";
+import { ArrowRight, Calendar, MapPin, Users, Building2, Globe, Star, CalendarDays } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { format } from "date-fns";
 
-export default function HomePage() {
-  const stats = [
-    { label: "Expected Attendees", value: "21,000+", icon: Users },
-    { label: "Participating Churches", value: "415+", icon: Building2 },
-    { label: "Years of Faith", value: "100", icon: Star },
-    { label: "Countries Represented", value: "10+", icon: Globe },
-  ];
+// Force dynamic so we always fetch fresh events
+export const dynamic = "force-dynamic";
+
+async function getPublishedEvents() {
+  try {
+    return await prisma.event.findMany({
+      where: { status: "PUBLISHED" },
+      include: {
+        venues: { select: { id: true, name: true, city: true, capacity: true, currentRegistrations: true } },
+        _count: { select: { registrations: true } },
+      },
+      orderBy: { startDate: "asc" },
+    });
+  } catch {
+    return [];
+  }
+}
+
+export default async function HomePage() {
+  const events = await getPublishedEvents();
 
   return (
     <div className="min-h-screen bg-background">
@@ -20,141 +35,129 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-24 md:py-32 relative">
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 text-sm font-medium mb-6">
-              <Calendar className="h-4 w-4" />
-              <span>Registration Opens April 15, 2026</span>
+              <CalendarDays className="h-4 w-4" />
+              <span>AOG Fiji Events Platform</span>
             </div>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-balance">
-              AOG Fiji 100th Anniversary Celebration
+              AOG Fiji Events
             </h1>
             <p className="mt-6 text-lg md:text-xl text-primary-foreground/80 max-w-2xl mx-auto text-pretty">
-              Join us in celebrating 100 years of the Assemblies of God in Fiji.
-              A historic gathering of faith, unity, and praise.
+              The official platform for Assemblies of God Fiji events — discover, register, and
+              participate in gatherings of faith across the Pacific.
             </p>
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="/register"
-                className="inline-flex items-center justify-center gap-2 rounded-md bg-primary-foreground px-6 py-3 text-base font-medium text-primary transition-colors hover:bg-primary-foreground/90"
-              >
-                Register Now
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="#details"
-                className="inline-flex items-center justify-center gap-2 rounded-md border border-primary-foreground/20 px-6 py-3 text-base font-medium text-primary-foreground transition-colors hover:bg-primary-foreground/10"
-              >
-                Event Details
-              </Link>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 border-b border-border">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-secondary mb-4">
-                  <stat.icon className="h-6 w-6 text-foreground" />
-                </div>
-                <div className="text-3xl md:text-4xl font-bold text-foreground">
-                  {stat.value}
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Details Section */}
-      <section id="details" className="py-20">
+      {/* Events Listing */}
+      <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Event Information
-            </h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Upcoming Events</h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to know about the AOG Fiji 100th Anniversary Celebration
+              Register for AOG Fiji events below
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            <div className="p-6 rounded-lg border border-border bg-card">
-              <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center mb-4">
-                <Calendar className="h-5 w-5 text-foreground" />
+          {events.length === 0 ? (
+            <div className="max-w-md mx-auto text-center py-16">
+              <div className="h-16 w-16 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4">
+                <CalendarDays className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-foreground text-lg">Date & Time</h3>
+              <h3 className="font-semibold text-foreground text-xl">No Events Yet</h3>
               <p className="mt-2 text-muted-foreground">
-                Event dates to be announced. Registration opens April 15, 2026.
+                Check back soon — events will appear here when they are published.
               </p>
             </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {events.map((event) => {
+                const totalCapacity = event.venues.reduce((s, v) => s + v.capacity, 0);
+                const totalRegistered = event.venues.reduce((s, v) => s + v.currentRegistrations, 0);
+                const pct = totalCapacity > 0 ? Math.round((totalRegistered / totalCapacity) * 100) : 0;
 
-            <div className="p-6 rounded-lg border border-border bg-card">
-              <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center mb-4">
-                <MapPin className="h-5 w-5 text-foreground" />
-              </div>
-              <h3 className="font-semibold text-foreground text-lg">Venues</h3>
-              <p className="mt-2 text-muted-foreground">
-                Multiple venues across Fiji to accommodate all attendees with live streaming available.
-              </p>
+                return (
+                  <div
+                    key={event.id}
+                    className="rounded-xl border border-border bg-card overflow-hidden hover:border-primary/40 hover:shadow-md transition-all group"
+                  >
+                    {/* Banner */}
+                    {event.bannerUrl ? (
+                      <div className="h-44 overflow-hidden">
+                        <img
+                          src={event.bannerUrl}
+                          alt={event.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-44 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                        <CalendarDays className="h-14 w-14 text-primary/30" />
+                      </div>
+                    )}
+
+                    <div className="p-5 space-y-3">
+                      <h3 className="font-bold text-foreground text-lg leading-tight">{event.name}</h3>
+
+                      {event.shortDesc && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">{event.shortDesc}</p>
+                      )}
+
+                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                        {event.startDate && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {format(new Date(event.startDate), "d MMM yyyy")}
+                          </span>
+                        )}
+                        {event.location && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {event.location}
+                          </span>
+                        )}
+                        {event.venues.length > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Building2 className="h-3.5 w-3.5" />
+                            {event.venues.length} venue{event.venues.length !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Capacity bar */}
+                      {totalCapacity > 0 && (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {totalRegistered.toLocaleString()} registered
+                            </span>
+                            <span>{pct}% full</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-yellow-500" : "bg-green-500"
+                              }`}
+                              style={{ width: `${Math.min(pct, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <Link
+                        href={`/events/${event.slug}`}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 mt-1"
+                      >
+                        View & Register
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-
-            <div className="p-6 rounded-lg border border-border bg-card">
-              <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center mb-4">
-                <Users className="h-5 w-5 text-foreground" />
-              </div>
-              <h3 className="font-semibold text-foreground text-lg">Who Can Attend</h3>
-              <p className="mt-2 text-muted-foreground">
-                Open to all churches, missionaries, partners, and individual believers.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Registration Categories */}
-      <section className="py-20 bg-secondary/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Registration Categories
-            </h2>
-            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
-              Choose the category that best represents your registration type
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
-            {[
-              { name: "Church Registration", desc: "For all church sizes" },
-              { name: "Church Plant", desc: "New church plants" },
-              { name: "World Fijian Congress", desc: "Overseas network" },
-              { name: "WFC Partners", desc: "Missionaries & Partners" },
-              { name: "Individual", desc: "Personal registration" },
-            ].map((cat) => (
-              <div
-                key={cat.name}
-                className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-colors"
-              >
-                <h3 className="font-medium text-foreground">{cat.name}</h3>
-                <p className="text-sm text-muted-foreground mt-1">{cat.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-10">
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-base font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              Start Registration
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
+          )}
         </div>
       </section>
 
@@ -164,16 +167,11 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-                100
+                AOG
               </div>
-              <span className="text-sm text-muted-foreground">
-                AOG Fiji 100th Anniversary
-              </span>
+              <span className="text-sm text-muted-foreground">AOG Fiji Events Platform</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <Link href="/register" className="hover:text-foreground transition-colors">
-                Register
-              </Link>
               <Link href="/admin" className="hover:text-foreground transition-colors">
                 Admin
               </Link>

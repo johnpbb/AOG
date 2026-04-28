@@ -1,24 +1,41 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { VENUES, Venue } from "@/lib/types";
 import { MapPin, Users, AlertCircle } from "lucide-react";
+
+interface Venue {
+  id: string;
+  name: string;
+  city?: string | null;
+  capacity: number;
+  currentRegistrations: number;
+}
 
 interface VenueSelectorProps {
   selectedVenue: string | null;
   onSelect: (venueId: string) => void;
+  venues: Venue[];
 }
 
-export function VenueSelector({ selectedVenue, onSelect }: VenueSelectorProps) {
+export function VenueSelector({ selectedVenue, onSelect, venues }: VenueSelectorProps) {
   const getAvailability = (venue: Venue) => {
     const remaining = venue.capacity - venue.currentRegistrations;
     const percentage = (remaining / venue.capacity) * 100;
-    
+
     if (percentage > 50) return { status: "available", color: "text-green-600", bg: "bg-green-500" };
     if (percentage > 20) return { status: "limited", color: "text-yellow-600", bg: "bg-yellow-500" };
     if (percentage > 0) return { status: "almost-full", color: "text-orange-600", bg: "bg-orange-500" };
     return { status: "full", color: "text-red-600", bg: "bg-red-500" };
   };
+
+  if (venues.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border p-6 text-center">
+        <MapPin className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+        <p className="text-sm text-muted-foreground">No venues available for this event.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -28,7 +45,7 @@ export function VenueSelector({ selectedVenue, onSelect }: VenueSelectorProps) {
       </div>
 
       <div className="grid gap-3">
-        {VENUES.map((venue) => {
+        {venues.map((venue) => {
           const availability = getAvailability(venue);
           const isFull = availability.status === "full";
           const remaining = venue.capacity - venue.currentRegistrations;
@@ -51,6 +68,7 @@ export function VenueSelector({ selectedVenue, onSelect }: VenueSelectorProps) {
                 <div>
                   <h4 className="font-medium text-foreground">{venue.name}</h4>
                   <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                    {venue.city && <span>{venue.city}</span>}
                     <span className="flex items-center gap-1">
                       <Users className="h-3.5 w-3.5" />
                       {remaining.toLocaleString()} seats available

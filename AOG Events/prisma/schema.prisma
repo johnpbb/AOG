@@ -10,6 +10,7 @@ enum PaymentStatus {
   PENDING
   COMPLETED
   FAILED
+  CANCELLED
 }
 
 enum PaymentMethod {
@@ -22,57 +23,181 @@ enum RegistrationType {
   INDIVIDUAL
 }
 
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum AttendanceEventType {
+  CHECK_IN
+  CHECK_OUT
+}
+
+enum TicketStatus {
+  ACTIVE
+  CANCELLED
+  USED
+}
+
+model Event {
+  id          String      @id @default(cuid())
+  name        String
+  description String?     @db.Text
+  shortDesc   String?     // One-liner for cards
+  startDate   DateTime?
+  endDate     DateTime?
+  status      EventStatus @default(DRAFT)
+  bannerUrl   String?     // Hero image URL
+  location    String?     // General location label e.g. "Suva, Fiji"
+  
+  // Slug for friendly URLs e.g. "aog-100th-anniversary"
+  slug        String      @unique
+
+  venues        Venue[]
+  registrations Registration[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([status])
+}
+
+model Venue {
+  id          String  @id @default(cuid())
+  name        String
+  description String? @db.Text
+  address     String?
+  city        String?
+  capacity    Int
+  isActive    Boolean @default(true)
+
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  registrations Registration[]
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  currentRegistrations Int      @default(0)
+}
+
 model Registration {
-  id                String           @id @default(cuid())
-  registrationId    String           @unique // Custom format e.g. AOG100-XXXX
-  type              RegistrationType
-  category          String           // very-large-church, small-church, individual, etc.
-  
+  id             String           @id @default(cuid())
+  registrationId String           @unique // Custom format e.g. AOG100-XXXX
+  type           RegistrationType
+  category       String           // very-large-church, small-church, individual, etc.
+
   // Contact Info
-  email             String
-  phone             String?
-  
+  email String
+  phone String?
+
   // Specific Data (JSON for flexibility between Church/Individual)
-  formData          Json
-  
+  formData Json
+
   // Attendees
-  numberOfAttendees Int              @default(1)
+  numberOfAttendees Int      @default(1)
   attendees         Attendee[]
-  
-  // Venue
-  venueId           String
-  
+
+  // Event & Venue
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+  venueId String
+  venue   Venue  @relation(fields: [venueId], references: [id])
+
   // Payment
-  fee               Float
-  paymentMethod     PaymentMethod
-  paymentStatus     PaymentStatus    @default(PENDING)
-  paymentSessionId  String?          // For ANZ eGate
-  paymentRef        String?          // Success Indicator or Bank Ref
-  
-  checkedInAt       DateTime?        // When they scanned their QR code
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  fee              Float
+  paymentMethod    PaymentMethod
+  paymentStatus    PaymentStatus @default(PENDING)
+  paymentSessionId String?       // For ANZ eGate
+  paymentRef       String?       // Success Indicator or Bank Ref
+
+  checkedInAt DateTime? // Legacy — first ever check-in timestamp (kept for backwards compat)
+  checkIns         DailyCheckIn[]
+  attendanceEvents AttendanceEvent[]
+  tickets          Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([registrationId])
   @@index([email])
+  @@index([eventId])
+  @@index([venueId])
+}
+
+// One row per attendee per event day — enables daily refresh of check-ins
+model DailyCheckIn {
+  id             String       @id @default(cuid())
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId String
+
+  checkInDate String   // YYYY-MM-DD — Fiji local date
+  checkedInAt DateTime @default(now()) // Exact UTC timestamp
+
+  // Optional: which device / admin performed the check-in
+  deviceLabel String?
+
+  // Ticket-based check-in (new) — takes priority over registrationId if set
+  ticketId String?
+  ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@unique([registrationId, checkInDate])
+  @@unique([ticketId, checkInDate])
+  @@index([checkInDate])
+  @@index([registrationId])
 }
 
 model Attendee {
   id             String       @id @default(cuid())
   registrationId String
   registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-  
-  firstName      String
-  lastName       String
-  email          String?
-  phone          String?
-  
-  createdAt      DateTime     @default(now())
+
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+
+  createdAt DateTime @default(now())
 }
 
-model Venue {
-  id                  String   @id
-  name                String
-  capacity            Int
-  currentRegistrations Int      @default(0)
+// Append-only attendance event log — every scan (check-in / check-out / re-entry)
+model AttendanceEvent {
+  id             String              @id @default(cuid())
+  registration   Registration        @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId String
+
+  eventDate  String              // YYYY-MM-DD Fiji local date
+  type       AttendanceEventType
+  timestamp  DateTime            @default(now())
+
+  // Flagged when a checkout is recorded with no prior check-in for that day
+  isFlagged  Boolean @default(false)
+  flagReason String?
+
+  // Ticket-based (new)
+  ticketId String?
+  ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([registrationId])
+  @@index([eventDate])
+  @@index([isFlagged])
+}
+
+// One ticket per seat purchased — each has its own unique QR code
+model Ticket {
+  id             String       @id @default(cuid())
+  ticketNumber   String       @unique // e.g. AOG-TKT-00001
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId String
+  status         TicketStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+
+  dailyCheckIns    DailyCheckIn[]
+  attendanceEvents AttendanceEvent[]
+
+  @@index([registrationId])
+  @@index([ticketNumber])
 }

@@ -15,6 +15,9 @@ export interface CategoryInfo {
   type: "church" | "individual";
   icon: string;
   fee: number;
+  registrationLimit: number | null; // null = no registration count cap
+  ticketPool: number;               // total seats shared across all registrations
+  maxTicketsPerReg: number;         // max tickets one registration can request
 }
 
 export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
@@ -25,6 +28,9 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     type: "church",
     icon: "building",
     fee: 10000,
+    registrationLimit: 5,
+    ticketPool: 2500,
+    maxTicketsPerReg: 2500,
   },
   {
     id: "large-church",
@@ -33,6 +39,9 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     type: "church",
     icon: "building",
     fee: 5000,
+    registrationLimit: 50,
+    ticketPool: 3500,
+    maxTicketsPerReg: 3500,
   },
   {
     id: "medium-church",
@@ -41,6 +50,9 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     type: "church",
     icon: "building",
     fee: 3000,
+    registrationLimit: 132,
+    ticketPool: 6000,
+    maxTicketsPerReg: 6000,
   },
   {
     id: "small-church",
@@ -49,6 +61,9 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     type: "church",
     icon: "building",
     fee: 1000,
+    registrationLimit: 175,
+    ticketPool: 4000,
+    maxTicketsPerReg: 4000,
   },
   {
     id: "church-plant",
@@ -57,6 +72,9 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     type: "church",
     icon: "sprout",
     fee: 500,
+    registrationLimit: 38,
+    ticketPool: 1000,
+    maxTicketsPerReg: 1000,
   },
   {
     id: "world-fijian-congress",
@@ -64,7 +82,10 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     description: "Overseas Network representatives",
     type: "church",
     icon: "globe",
-    fee: 0, // Pledge based
+    fee: 0,
+    registrationLimit: 5,
+    ticketPool: 1500,
+    maxTicketsPerReg: 1500,
   },
   {
     id: "wfc-partners",
@@ -72,15 +93,21 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     description: "Missionaries & Partners",
     type: "individual",
     icon: "users",
-    fee: 0, // Sponsored
+    fee: 0,
+    registrationLimit: null,
+    ticketPool: 500,
+    maxTicketsPerReg: 500,
   },
   {
     id: "individual",
     name: "Individual Attendee",
-    description: "Personal registration",
+    description: "Personal registration — register yourself and up to 9 friends or family",
     type: "individual",
     icon: "user",
     fee: 100,
+    registrationLimit: null,
+    ticketPool: 1000,
+    maxTicketsPerReg: 10,
   },
 ];
 

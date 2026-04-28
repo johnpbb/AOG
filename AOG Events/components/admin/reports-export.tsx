@@ -52,9 +52,8 @@ const reportTypes = [
 ];
 
 export function ReportsExport() {
-  const handleExport = (reportId: string, format: string) => {
-    console.log(`Exporting ${reportId} as ${format}`);
-    // In a real app, this would trigger a download
+  const handleExport = (_reportId: string, _format: string) => {
+    // Export functionality to be implemented
   };
 
   return (

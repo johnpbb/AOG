@@ -9,11 +9,12 @@ import {
   QrCode,
   Menu,
   X,
+  CalendarDays,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-type AdminView = "overview" | "registrations" | "venues" | "reports" | "checkin";
+type AdminView = "overview" | "events" | "venues" | "registrations" | "reports" | "checkin";
 
 interface AdminSidebarProps {
   activeView: AdminView;
@@ -22,8 +23,9 @@ interface AdminSidebarProps {
 
 const navItems = [
   { id: "overview" as const, label: "Dashboard", icon: LayoutDashboard },
-  { id: "registrations" as const, label: "Registrations", icon: Users },
+  { id: "events" as const, label: "Events", icon: CalendarDays },
   { id: "venues" as const, label: "Venues", icon: MapPin },
+  { id: "registrations" as const, label: "Registrations", icon: Users },
   { id: "reports" as const, label: "Reports", icon: FileText },
   { id: "checkin" as const, label: "Check-In", icon: QrCode },
 ];
@@ -61,7 +63,7 @@ export function AdminSidebar({ activeView, onViewChange }: AdminSidebarProps) {
         <div className="flex flex-col h-full p-4">
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-foreground">Admin Panel</h2>
-            <p className="text-sm text-muted-foreground">Manage event registrations</p>
+            <p className="text-sm text-muted-foreground">AOG Fiji Events</p>
           </div>
 
           <nav className="space-y-1">
@@ -86,9 +88,7 @@ export function AdminSidebar({ activeView, onViewChange }: AdminSidebarProps) {
           </nav>
 
           <div className="mt-auto pt-4 border-t border-border">
-            <div className="text-xs text-muted-foreground">
-              AOG FJ 100th Admin v1.0
-            </div>
+            <div className="text-xs text-muted-foreground">AOG Fiji Events Admin v2.0</div>
           </div>
         </div>
       </aside>
