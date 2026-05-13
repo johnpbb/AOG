@@ -186,6 +186,17 @@ model AttendanceEvent {
   @@index([isFlagged])
 }
 
+// Single-row site configuration — always one row with id="default"
+model SiteConfig {
+  id                  String   @id @default("default")
+  bankName            String   @default("")
+  bankAccountName     String   @default("")
+  bankAccountNumber   String   @default("")
+  bankBranch          String   @default("")
+  notificationEmail   String   @default("timoci@pacificbedbank.com")
+  updatedAt           DateTime @updatedAt
+}
+
 // One ticket per seat purchased — each has its own unique QR code
 model Ticket {
   id             String       @id @default(cuid())

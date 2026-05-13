@@ -8,6 +8,7 @@ import { EventManagement } from "@/components/admin/event-management";
 import { RegistrationsList } from "@/components/admin/registrations-list";
 import { VenueManagement } from "@/components/admin/venue-management";
 import { ReportsExport } from "@/components/admin/reports-export";
+import { SettingsPanel } from "@/components/admin/settings-panel";
 import dynamic from "next/dynamic";
 
 const CheckInSystem = dynamic(
@@ -15,7 +16,7 @@ const CheckInSystem = dynamic(
   { ssr: false }
 );
 
-type AdminView = "overview" | "events" | "venues" | "registrations" | "reports" | "checkin";
+type AdminView = "overview" | "events" | "venues" | "registrations" | "reports" | "checkin" | "settings";
 
 export default function AdminPage() {
   const [activeView, setActiveView] = useState<AdminView>("overview");
@@ -34,6 +35,8 @@ export default function AdminPage() {
         return <ReportsExport />;
       case "checkin":
         return <CheckInSystem />;
+      case "settings":
+        return <SettingsPanel />;
       default:
         return <DashboardOverview />;
     }

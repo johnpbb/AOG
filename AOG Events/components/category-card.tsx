@@ -28,7 +28,7 @@ export function CategoryCard({ category, isSelected, onSelect }: CategoryCardPro
         "w-full text-left p-4 rounded-lg border transition-all duration-200 group",
         "hover:border-primary/50 hover:bg-secondary/50",
         isSelected
-          ? "border-primary bg-primary/5 ring-1 ring-primary"
+          ? "border-primary bg-muted-foreground ring-1 ring-primary"
           : "border-border bg-card"
       )}
     >

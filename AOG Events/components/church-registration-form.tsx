@@ -9,9 +9,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
-import { Building, CreditCard, Loader2, Minus, Plus } from "lucide-react";
+import { Building, MapPin, Loader2, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { loadAnzScript, initAnzPayment } from "@/lib/anz-egate-client";
 
 interface Venue {
   id: string;
@@ -27,8 +26,7 @@ interface ChurchRegistrationFormProps {
   onSubmit: (data: unknown) => void;
   eventId?: string;
   venues?: Venue[];
-  // Live availability from /api/categories/availability
-  stepperMax?: number; // remaining pool — dynamic upper bound
+  stepperMax?: number;
 }
 
 export function ChurchRegistrationForm({
@@ -54,7 +52,6 @@ export function ChurchRegistrationForm({
     pastorEmail: "",
     pastorPhone: "",
     venue: "",
-    paymentMethod: "" as "online" | "bank-transfer" | "",
   });
   const [numberOfTickets, setNumberOfTickets] = useState(1);
 
@@ -90,6 +87,7 @@ export function ChurchRegistrationForm({
           phone: formData.pastorPhone,
           fee: category.fee,
           numberOfTickets,
+          paymentMethod: "bank-transfer",
           eventId,
           ...formData,
         }),
@@ -100,32 +98,7 @@ export function ChurchRegistrationForm({
         throw new Error(dbData.error || "Could not save registration");
       }
 
-      if (formData.paymentMethod === "online" && category.fee > 0) {
-        await loadAnzScript();
-        const payRes = await fetch("/api/payment/anz/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            bookingId: registrationId,
-            amount: category.fee,
-            customerEmail: formData.pastorEmail,
-          }),
-        });
-        const payData = await payRes.json();
-        if (payData.sessionId) {
-          initAnzPayment(
-            payData.sessionId,
-            payData.merchantId,
-            () => onSubmit({ category: category.id, registrationId, ...formData, numberOfTickets, paymentStatus: "completed" }),
-            () => { setIsProcessing(false); alert("Payment was cancelled"); },
-            (err: any) => { setIsProcessing(false); console.error(err); alert("An error occurred during payment"); }
-          );
-        } else {
-          throw new Error(payData.error || "Failed to create payment session");
-        }
-      } else {
-        onSubmit({ category: category.id, registrationId, ...formData, numberOfTickets });
-      }
+      onSubmit({ category: category.id, registrationId, ...formData, numberOfTickets, paymentMethod: "bank-transfer" });
     } catch (err: any) {
       setIsProcessing(false);
       setError(err.message);
@@ -134,7 +107,7 @@ export function ChurchRegistrationForm({
 
   const steps = [
     { number: 1, title: "Church Details", icon: Building },
-    { number: 2, title: "Venue & Payment", icon: CreditCard },
+    { number: 2, title: "Venue Selection", icon: MapPin },
   ];
 
   return (
@@ -150,7 +123,7 @@ export function ChurchRegistrationForm({
                 "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
                 step === s.number ? "bg-primary text-primary-foreground"
                   : step > s.number ? "bg-green-100 text-green-700"
-                  : "bg-secondary text-muted-foreground"
+                    : "bg-secondary text-muted-foreground"
               )}
             >
               <s.icon className="h-4 w-4" />
@@ -178,7 +151,7 @@ export function ChurchRegistrationForm({
             <p className="text-muted-foreground mt-1">Enter your church information for {category.name}</p>
           </div>
 
-          <FieldGroup className="grid gap-6 md:grid-cols-2">
+          <FieldGroup className="grid gap-6 md:grid-cols-2 text-xs text-muted-foreground mt-0.5">
             <Field className="md:col-span-2">
               <FieldLabel htmlFor="churchName">Church Name</FieldLabel>
               <Input id="churchName" placeholder="Enter your church name" value={formData.churchName}
@@ -215,7 +188,7 @@ export function ChurchRegistrationForm({
           </FieldGroup>
 
           {/* Ticket Quantity */}
-          <div className="p-5 rounded-xl border-2 border-border bg-secondary/30 space-y-3">
+          <div className="text-xs text-muted-foreground mt-0.5 p-5 rounded-xl border-2 border-border bg-secondary/30 space-y-3">
             <div>
               <FieldLabel>Number of Tickets</FieldLabel>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -257,43 +230,35 @@ export function ChurchRegistrationForm({
             </div>
           </div>
 
-          <div className="flex justify-between pt-4">
+          <div className="text-xs text-muted-foreground mt-0.5 flex justify-between pt-4">
             <Button variant="outline" onClick={onBack}>Back</Button>
-            <Button onClick={() => setStep(2)} disabled={!isStep1Valid}>
+            <Button onClick={() => setStep(2)} disabled={!isStep1Valid} className="bg-brand-orange">
               Continue to Venue
             </Button>
           </div>
         </div>
       )}
 
-      {/* Step 2: Venue & Payment */}
+      {/* Step 2: Venue Selection */}
       {step === 2 && (
         <div className="space-y-6">
           <div className="text-center">
-            <h2 className="text-2xl font-semibold text-foreground">Venue & Payment</h2>
-            <p className="text-muted-foreground mt-1">Select your venue and payment method</p>
+            <h2 className="text-2xl font-semibold text-foreground">Select Venue</h2>
+            <p className="text-muted-foreground mt-1">Choose which venue your group will attend</p>
           </div>
 
-          <VenueSelector selectedVenue={formData.venue}
-            onSelect={(venueId) => updateFormData("venue", venueId)} venues={venues} />
+          <VenueSelector
+            selectedVenue={formData.venue}
+            onSelect={(venueId) => updateFormData("venue", venueId)}
+            venues={venues}
+          />
 
-          <div className="space-y-3">
-            <FieldLabel>Payment Method</FieldLabel>
-            <div className="grid gap-3 md:grid-cols-2">
-              {(["online", "bank-transfer"] as const).map((method) => (
-                <button key={method} onClick={() => updateFormData("paymentMethod", method)}
-                  className={cn("p-4 rounded-lg border text-left transition-all",
-                    formData.paymentMethod === method
-                      ? "border-primary bg-primary/5 ring-1 ring-primary"
-                      : "border-border hover:border-primary/50"
-                  )}>
-                  <div className="font-medium">{method === "online" ? "Online Payment" : "Bank Transfer"}</div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {method === "online" ? "Pay via VaizeePay (M-PAiSA, MyCash, Visa/Mastercard)" : "For large transactions via bank-to-bank transfer"}
-                  </div>
-                </button>
-              ))}
-            </div>
+          {/* Payment notice */}
+          <div className="p-4 rounded-lg border border-brand-orange/30 bg-brand-orange/5 text-sm space-y-1">
+            <p className="font-semibold text-foreground">Payment via Bank Transfer</p>
+            <p className="text-muted-foreground">
+              After submitting, you'll receive bank transfer details. Your tickets will be issued once our team verifies your remittance — usually within 1–2 business days.
+            </p>
           </div>
 
           {/* Summary */}
@@ -319,8 +284,10 @@ export function ChurchRegistrationForm({
 
           <div className="flex justify-between pt-4">
             <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
-            <Button onClick={handleSubmit} disabled={!isStep2Valid || !formData.paymentMethod || isProcessing}>
-              {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : "Complete Registration"}
+            <Button onClick={handleSubmit} disabled={!isStep2Valid || isProcessing}>
+              {isProcessing
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting…</>
+                : "Submit Registration"}
             </Button>
           </div>
         </div>

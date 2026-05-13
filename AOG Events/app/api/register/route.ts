@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
+import {
+  sendPendingRegistrationEmail,
+  sendAdminNotificationEmail,
+} from "@/lib/email";
 
 function padTicketNumber(n: number): string {
   return `AOG-TKT-${String(n).padStart(5, "0")}`;
@@ -21,7 +25,6 @@ export async function POST(request: Request) {
       paymentMethod,
       fee,
       numberOfTickets = 1,
-      // Legacy attendees array (no longer used in new forms, kept for compat)
       attendees,
       ...rest
     } = data;
@@ -37,9 +40,7 @@ export async function POST(request: Request) {
     const qty = Math.max(1, parseInt(String(numberOfTickets), 10) || 1);
     const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === category);
 
-    // ── Transaction: check limits + create registration + tickets ──────────
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Check registration count limit
       if (catInfo?.registrationLimit !== null && catInfo?.registrationLimit !== undefined) {
         const regCount = await tx.registration.count({
           where: { category, paymentStatus: "COMPLETED" },
@@ -51,13 +52,9 @@ export async function POST(request: Request) {
         }
       }
 
-      // 2. Check ticket pool
       if (catInfo) {
         const ticketCount = await tx.ticket.count({
-          where: {
-            status: "ACTIVE",
-            registration: { category },
-          },
+          where: { status: "ACTIVE", registration: { category } },
         });
         const remaining = catInfo.ticketPool - ticketCount;
         if (qty > remaining) {
@@ -67,7 +64,6 @@ export async function POST(request: Request) {
         }
       }
 
-      // 3. Create registration
       const registration = await tx.registration.create({
         data: {
           registrationId,
@@ -82,7 +78,6 @@ export async function POST(request: Request) {
           paymentStatus: "PENDING",
           formData: rest || {},
           numberOfAttendees: qty,
-          // Legacy: if old form passes attendees array, still save them
           ...(Array.isArray(attendees) && attendees.length > 0
             ? {
                 attendees: {
@@ -98,17 +93,12 @@ export async function POST(request: Request) {
         },
       });
 
-      // 4. Generate N tickets with sequential numbers
-      const lastTicket = await tx.ticket.findFirst({
-        orderBy: { ticketNumber: "desc" },
-        select: { ticketNumber: true },
-      });
-
-      let nextSeq = 1;
-      if (lastTicket) {
-        const match = lastTicket.ticketNumber.match(/AOG-TKT-(\d+)/);
-        if (match) nextSeq = parseInt(match[1], 10) + 1;
-      }
+      const maxResult = await tx.$queryRaw<{ max: string | null }[]>`
+        SELECT MAX(CAST(SUBSTRING("ticketNumber" FROM 9) AS INTEGER)) AS max
+        FROM "Ticket"
+        WHERE "ticketNumber" LIKE 'AOG-TKT-%'
+      `;
+      const nextSeq = (Number(maxResult[0]?.max) || 0) + 1;
 
       const ticketData = Array.from({ length: qty }, (_, i) => ({
         ticketNumber: padTicketNumber(nextSeq + i),
@@ -118,13 +108,11 @@ export async function POST(request: Request) {
 
       await tx.ticket.createMany({ data: ticketData });
 
-      // 5. Update venue currentRegistrations
       await tx.venue.update({
         where: { id: venue },
         data: { currentRegistrations: { increment: qty } },
       });
 
-      // Return created tickets for email/QR generation
       const tickets = await tx.ticket.findMany({
         where: { registrationId: registration.id },
         orderBy: { ticketNumber: "asc" },
@@ -132,6 +120,48 @@ export async function POST(request: Request) {
 
       return { registration, tickets };
     });
+
+    // ── Send emails for bank transfer registrations ────────────────────────
+    if (paymentMethod !== "online" && email && email !== "unknown") {
+      const [siteConfig, event] = await Promise.all([
+        prisma.siteConfig.findUnique({ where: { id: "default" } }),
+        prisma.event.findUnique({ where: { id: eventId }, select: { name: true } }),
+      ]);
+
+      const registrantName =
+        rest.pastorName || rest.firstName
+          ? `${rest.firstName ?? ""} ${rest.lastName ?? ""}`.trim() || rest.pastorName
+          : email;
+
+      const eventName = event?.name ?? "AOG Fiji 100th Anniversary";
+
+      const emailParams = {
+        registrantName: String(registrantName),
+        registrationId: result.registration.registrationId,
+        category: catInfo?.name ?? category,
+        numberOfTickets: qty,
+        fee: result.registration.fee,
+        bankName: siteConfig?.bankName ?? "",
+        bankAccountName: siteConfig?.bankAccountName ?? "",
+        bankAccountNumber: siteConfig?.bankAccountNumber ?? "",
+        bankBranch: siteConfig?.bankBranch ?? "",
+        eventName,
+      };
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+      await Promise.allSettled([
+        sendPendingRegistrationEmail({ to: email, ...emailParams }),
+        siteConfig?.notificationEmail
+          ? sendAdminNotificationEmail({
+              to: siteConfig.notificationEmail,
+              registrantEmail: email,
+              adminUrl: `${appUrl}/admin`,
+              ...emailParams,
+            })
+          : Promise.resolve(),
+      ]);
+    }
 
     return NextResponse.json({
       success: true,
@@ -148,7 +178,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { error: error.message, details: process.env.NODE_ENV === "development" ? error : undefined },
+      { error: "Registration failed. Please try again or contact support." },
       { status: 500 }
     );
   }

@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Filter, Eye, MoreHorizontal, Download, Loader2, XCircle } from "lucide-react";
+import { Search, Filter, Eye, MoreHorizontal, Download, Loader2, XCircle, CheckCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +34,7 @@ export function RegistrationsList() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRegistrations();
@@ -51,6 +52,25 @@ export function RegistrationsList() {
       console.error("Error fetching registrations:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApprove = async (reg: any) => {
+    const confirmed = window.confirm(
+      `Approve registration ${reg.registrationId} for ${reg.formData?.churchName ?? reg.formData?.firstName ?? reg.email}?\n\nThis will mark the payment as confirmed and send tickets to ${reg.email}.`
+    );
+    if (!confirmed) return;
+
+    setApprovingId(reg.id);
+    try {
+      const res = await fetch(`/api/admin/registrations/${reg.id}`, { method: "PATCH" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to approve");
+      await fetchRegistrations();
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setApprovingId(null);
     }
   };
 
@@ -196,7 +216,9 @@ export function RegistrationsList() {
                       <TableCell className="font-mono text-sm">{reg.registrationId}</TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium text-foreground">{name}</div>
+                          <div className="font-medium text-foreground">
+                            {reg.formData?.churchName ?? name}
+                          </div>
                           <div className="text-xs text-muted-foreground">{reg.email}</div>
                         </div>
                       </TableCell>
@@ -213,19 +235,34 @@ export function RegistrationsList() {
                         <span className="text-sm">{reg.venue?.name ?? reg.venueId}</span>
                       </TableCell>
                       <TableCell>
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            reg.paymentStatus === "COMPLETED"
-                              ? "bg-green-100 text-green-700"
-                              : reg.paymentStatus === "CANCELLED"
-                              ? "bg-gray-100 text-gray-500 line-through"
-                              : "bg-yellow-100 text-yellow-700"
-                          }`}
-                        >
-                          {reg.paymentStatus === "COMPLETED" ? "Confirmed"
-                            : reg.paymentStatus === "CANCELLED" ? "Cancelled"
-                            : "Pending"}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              reg.paymentStatus === "COMPLETED"
+                                ? "bg-green-100 text-green-700"
+                                : reg.paymentStatus === "CANCELLED"
+                                ? "bg-gray-100 text-gray-500 line-through"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {reg.paymentStatus === "COMPLETED" ? "Confirmed"
+                              : reg.paymentStatus === "CANCELLED" ? "Cancelled"
+                              : "Pending"}
+                          </span>
+                          {reg.paymentStatus === "PENDING" && reg.paymentMethod === "BANK_TRANSFER" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs gap-1 border-green-300 text-green-700 hover:bg-green-50"
+                              disabled={approvingId === reg.id}
+                              onClick={() => handleApprove(reg)}
+                            >
+                              {approvingId === reg.id
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <><CheckCircle className="h-3 w-3" /> Approve</>}
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {format(new Date(reg.createdAt), "yyyy-MM-dd")}
@@ -242,7 +279,16 @@ export function RegistrationsList() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>Resend QR Code</DropdownMenuItem>
+                            {reg.paymentStatus === "PENDING" && reg.paymentMethod === "BANK_TRANSFER" && (
+                              <DropdownMenuItem
+                                className="text-green-700 focus:text-green-700"
+                                disabled={approvingId === reg.id}
+                                onClick={() => handleApprove(reg)}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Verify & Approve
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
                               disabled={reg.paymentStatus === "CANCELLED" || cancellingId === reg.id}

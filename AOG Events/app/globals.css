@@ -1,9 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Boldonse&family=Poppins:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --brand-orange: #FF6C00;
+  --brand-yellow: #FFF200;
+  --brand-black: #000000;
+  --brand-white: #FFFFFF;
+  --brand-faith-blue: #0085FF;
+  --brand-teal: #1BADB9;
+  --brand-jordan-blue: #0C5394;
+
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -117,6 +126,17 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Brand */
+  --font-poppins: 'Poppins', sans-serif;
+  --font-boldonse: 'Boldonse', sans-serif;
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-black: var(--brand-black);
+  --color-brand-white: var(--brand-white);
+  --color-brand-faith-blue: var(--brand-faith-blue);
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-jordan-blue: var(--brand-jordan-blue);
 }
 
 @layer base {
@@ -125,5 +145,52 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Fixed/sticky nav shell — add `fixed` or `sticky` in className */
+  .brand-nav {
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background-color: rgba(0, 0, 0, 0.85);
+    border-bottom: 1px solid rgba(255, 108, 0, 0.18);
+  }
+
+  /* Tapa pattern — card banner fallback (60 px tile) */
+  .tapa-bg {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23FF6C00'/%3E%3Crect x='15' y='0' width='10' height='10' fill='%23000' opacity='0.55'/%3E%3Crect x='0' y='15' width='10' height='10' fill='%23000' opacity='0.55'/%3E%3Crect x='30' y='15' width='10' height='10' fill='%23000' opacity='0.55'/%3E%3Crect x='15' y='30' width='10' height='10' fill='%23000' opacity='0.55'/%3E%3Crect x='15' y='15' width='10' height='10' fill='%23000' opacity='0.3'/%3E%3Cpolygon points='0,0 8,0 0,8' fill='%23000' opacity='0.4'/%3E%3Cpolygon points='40,0 32,0 40,8' fill='%23000' opacity='0.4'/%3E%3Cpolygon points='0,40 8,40 0,32' fill='%23000' opacity='0.4'/%3E%3Cpolygon points='40,40 32,40 40,32' fill='%23000' opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 60px auto;
+    background-repeat: repeat;
+  }
+
+  /* Tapa pattern — hero side strips (72 px tile, vertical repeat) */
+  .tapa-strip-y {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23FF6C00'/%3E%3Crect x='15' y='0' width='10' height='10' fill='%23000' opacity='0.55'/%3E%3Crect x='0' y='15' width='10' height='10' fill='%23000' opacity='0.55'/%3E%3Crect x='30' y='15' width='10' height='10' fill='%23000' opacity='0.55'/%3E%3Crect x='15' y='30' width='10' height='10' fill='%23000' opacity='0.55'/%3E%3Crect x='15' y='15' width='10' height='10' fill='%23000' opacity='0.3'/%3E%3Cpolygon points='0,0 8,0 0,8' fill='%23000' opacity='0.4'/%3E%3Cpolygon points='40,0 32,0 40,8' fill='%23000' opacity='0.4'/%3E%3Cpolygon points='0,40 8,40 0,32' fill='%23000' opacity='0.4'/%3E%3Cpolygon points='40,40 32,40 40,32' fill='%23000' opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 72px auto;
+    background-repeat: repeat-y;
+  }
+
+  /* Gradient helpers */
+  .brand-gradient-lr {
+    background: linear-gradient(to right, var(--brand-orange), var(--brand-yellow));
+  }
+  .brand-gradient-rl {
+    background: linear-gradient(to right, var(--brand-yellow), var(--brand-orange));
+  }
+  .brand-stats-gradient {
+    background: linear-gradient(to right, var(--brand-orange), #FFA500, var(--brand-yellow));
+  }
+
+  /* Glow overlays */
+  .brand-hero-glow {
+    background: radial-gradient(ellipse 70% 55% at 50% 50%, rgba(255, 108, 0, 0.12) 0%, transparent 70%);
+  }
+  .brand-about-glow {
+    background: radial-gradient(ellipse 60% 50% at 50% 100%, rgba(255, 108, 0, 0.08) 0%, transparent 70%);
   }
 }

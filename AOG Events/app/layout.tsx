@@ -6,10 +6,11 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'AOG FJ 100th Celebration - Registration',
+  title: 'AGFJ Events',
   description: 'Register for the Assemblies of God Fiji 100th Anniversary Celebration Event',
   generator: 'v0.app',
   icons: {
+    shortcut: '/favicon.ico',
     icon: '/favicon.ico',
   },
 }

@@ -144,33 +144,6 @@ export interface Attendee {
   phone?: string;
 }
 
-export interface Venue {
-  id: string;
-  name: string;
-  capacity: number;
-  currentRegistrations: number;
-}
-
-export const VENUES: Venue[] = [
-  {
-    id: "main-arena",
-    name: "Main Arena",
-    capacity: 10000,
-    currentRegistrations: 0,
-  },
-  {
-    id: "conference-hall",
-    name: "Conference Hall",
-    capacity: 5000,
-    currentRegistrations: 0,
-  },
-  {
-    id: "overflow-venue",
-    name: "Overflow Venue",
-    capacity: 6000,
-    currentRegistrations: 0,
-  },
-];
 
 export const DISTRICTS = [
   "Suva",

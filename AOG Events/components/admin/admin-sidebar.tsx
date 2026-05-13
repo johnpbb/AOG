@@ -10,11 +10,14 @@ import {
   Menu,
   X,
   CalendarDays,
+  LogOut,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-type AdminView = "overview" | "events" | "venues" | "registrations" | "reports" | "checkin";
+type AdminView = "overview" | "events" | "venues" | "registrations" | "reports" | "checkin" | "settings";
 
 interface AdminSidebarProps {
   activeView: AdminView;
@@ -28,10 +31,17 @@ const navItems = [
   { id: "registrations" as const, label: "Registrations", icon: Users },
   { id: "reports" as const, label: "Reports", icon: FileText },
   { id: "checkin" as const, label: "Check-In", icon: QrCode },
+  { id: "settings" as const, label: "Settings", icon: Settings },
 ];
 
 export function AdminSidebar({ activeView, onViewChange }: AdminSidebarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch("/api/admin/logout", { method: "POST" });
+    router.push("/admin/login");
+  }
 
   return (
     <>
@@ -87,8 +97,15 @@ export function AdminSidebar({ activeView, onViewChange }: AdminSidebarProps) {
             ))}
           </nav>
 
-          <div className="mt-auto pt-4 border-t border-border">
+          <div className="mt-auto pt-4 border-t border-border space-y-3">
             <div className="text-xs text-muted-foreground">AOG Fiji Events Admin v2.0</div>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            >
+              <LogOut className="h-5 w-5" />
+              Sign Out
+            </button>
           </div>
         </div>
       </aside>

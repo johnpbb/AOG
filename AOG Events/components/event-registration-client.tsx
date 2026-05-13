@@ -40,6 +40,9 @@ export function EventRegistrationClient({ event }: Props) {
   const [registrationData, setRegistrationData] = useState<{
     id: string;
     email: string;
+    paymentMethod?: string;
+    fee?: number;
+    numberOfTickets?: number;
   } | null>(null);
 
   const handleCategorySelect = (category: CategoryInfo) => {
@@ -55,6 +58,9 @@ export function EventRegistrationClient({ event }: Props) {
     setRegistrationData({
       id: formData.registrationId || `AOG-${Date.now().toString(36).toUpperCase()}`,
       email: formData.email || formData.pastorEmail || "",
+      paymentMethod: formData.paymentMethod,
+      fee: formData.fee,
+      numberOfTickets: formData.numberOfTickets,
     });
     setStep("success");
   };
@@ -133,7 +139,7 @@ export function EventRegistrationClient({ event }: Props) {
 
           {selectedCategory && (
             <div className="pt-4">
-              <Button onClick={handleContinue} className="w-full" size="lg">
+              <Button onClick={handleContinue} className="w-full" size="lg" style={{ backgroundColor: "rgb(255, 108, 0)", color: "white" }}>
                 Continue with {selectedCategory.name}
               </Button>
             </div>
@@ -175,6 +181,9 @@ export function EventRegistrationClient({ event }: Props) {
           <RegistrationSuccess
             registrationId={registrationData.id}
             email={registrationData.email}
+            paymentMethod={registrationData.paymentMethod}
+            fee={registrationData.fee}
+            numberOfTickets={registrationData.numberOfTickets}
             onNewRegistration={handleNewRegistration}
           />
         </div>
