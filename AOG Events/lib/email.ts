@@ -313,7 +313,7 @@ export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
     eventDate: p.eventDate,
     venueName: p.venueName,
     venueCity: p.venueCity,
-    supportEmail: process.env.SMTP_FROM_EMAIL ?? "",
+    supportEmail: (await prisma.siteConfig.findUnique({ where: { id: "default" } }))?.notificationEmail ?? process.env.SMTP_FROM_EMAIL ?? "",
   };
 
   const dataBlocks = [
