@@ -12,12 +12,13 @@ import {
   CalendarDays,
   LogOut,
   Settings,
+  Mail,
 } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-type AdminView = "overview" | "events" | "venues" | "registrations" | "reports" | "checkin" | "settings";
+type AdminView = "overview" | "events" | "venues" | "registrations" | "reports" | "checkin" | "settings" | "email-templates";
 
 interface AdminSidebarProps {
   activeView: AdminView;
@@ -31,6 +32,7 @@ const navItems = [
   { id: "registrations" as const, label: "Registrations", icon: Users },
   { id: "reports" as const, label: "Reports", icon: FileText },
   { id: "checkin" as const, label: "Check-In", icon: QrCode },
+  { id: "email-templates" as const, label: "Email Templates", icon: Mail },
   { id: "settings" as const, label: "Settings", icon: Settings },
 ];
 

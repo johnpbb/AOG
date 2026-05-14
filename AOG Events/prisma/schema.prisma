@@ -186,6 +186,18 @@ model AttendanceEvent {
   @@index([isFlagged])
 }
 
+model EmailTemplate {
+  id          String   @id
+  subject     String   @db.Text
+  preHeading  String   @default("") @db.Text
+  heading     String   @default("") @db.Text
+  bodyHtml    String   @default("") @db.Text
+  ctaText     String   @default("")
+  ctaUrl      String   @default("")
+  closingHtml String   @default("") @db.Text
+  updatedAt   DateTime @updatedAt
+}
+
 // Single-row site configuration — always one row with id="default"
 model SiteConfig {
   id                  String   @id @default("default")

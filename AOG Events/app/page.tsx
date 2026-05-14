@@ -250,8 +250,8 @@ export default async function HomePage() {
           <p className="text-xs text-white/30">© 2026 Assemblies of God, Fiji. All rights reserved.</p>
           <div className="flex gap-7 text-[13px]">
             <Link href="/admin" className="text-white/35 no-underline">Admin</Link>
-            <span className="text-white/[0.18]">·</span>
-            <span className="text-white/25">Powered by VaizeePay</span>
+            {/* <span className="text-white/[0.18]">·</span>
+            <span className="text-white/25">Powered by VaizeePay</span> */}
           </div>
         </div>
       </footer>
