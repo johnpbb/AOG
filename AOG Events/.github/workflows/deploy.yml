@@ -1,0 +1,39 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.OPALSTACK_HOST }}
+          username: ${{ secrets.OPALSTACK_USER }}
+          password: ${{ secrets.OPAL_PASSWORD }}
+          port: 22
+          script: |
+            set -e
+            cd "/home/aog/apps/aog/AOG Events"
+
+            echo "── Pulling latest code ──"
+            git pull origin main
+
+            echo "── Installing dependencies ──"
+            npm ci
+
+            echo "── Building ──"
+            npm run build
+
+            echo "── Reloading app (zero-downtime) ──"
+            pm2 reload aog-events --update-env
+
+            echo "── Done ──"
+            pm2 status aog-events
