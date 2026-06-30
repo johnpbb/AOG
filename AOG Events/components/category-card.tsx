@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { CategoryInfo } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
 import { Building, Globe, Users, User, Sprout, ChevronRight } from "lucide-react";
 
 interface CategoryCardProps {
@@ -24,11 +25,12 @@ export function CategoryCard({ category, isSelected, onSelect }: CategoryCardPro
   return (
     <button
       onClick={() => onSelect(category)}
+      aria-pressed={isSelected}
       className={cn(
         "w-full text-left p-4 rounded-lg border transition-all duration-200 group",
         "hover:border-primary/50 hover:bg-secondary/50",
         isSelected
-          ? "border-primary bg-muted-foreground ring-1 ring-primary"
+          ? "border-primary bg-primary/5 ring-1 ring-primary"
           : "border-border bg-card"
       )}
     >
@@ -49,16 +51,24 @@ export function CategoryCard({ category, isSelected, onSelect }: CategoryCardPro
             <p className="text-sm text-muted-foreground mt-0.5">
               {category.description}
             </p>
-            <span
-              className={cn(
-                "inline-block mt-2 text-xs px-2 py-0.5 rounded-full",
-                category.type === "church"
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-green-100 text-green-700"
-              )}
-            >
-              {category.type === "church" ? "Church Registration" : "Individual Registration"}
-            </span>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <Badge variant={category.type === "church" ? "secondary" : "success"}>
+                {category.type === "church" ? "Church Registration" : "Individual Registration"}
+              </Badge>
+              <Badge variant="outline" className="font-mono">
+                Code: {category.categoryCode}
+              </Badge>
+            </div>
+            {isSelected && (
+              <div className="mt-3 p-3 rounded-lg bg-secondary/60 text-xs text-muted-foreground space-y-1">
+                <p>
+                  Registration limit:{" "}
+                  {category.registrationLimit === null ? "No cap" : `${category.registrationLimit} registrations`}
+                </p>
+                <p>Total seats available in this category: {category.ticketPool.toLocaleString()}</p>
+                <p>Registration fee: ${category.fee.toLocaleString()} FJD</p>
+              </div>
+            )}
           </div>
         </div>
         <ChevronRight

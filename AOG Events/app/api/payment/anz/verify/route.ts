@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import { sendConfirmationEmail } from '@/lib/mail';
+import { generateTicketsForRegistration } from '@/lib/tickets';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -50,9 +51,18 @@ export async function GET(request: Request) {
           paymentRef: resultIndicator,
         },
         include: {
-          attendees: true
+          attendees: true,
+          tickets: { select: { id: true } },
         }
       });
+
+      // Issue entry QR tickets now that payment is confirmed (idempotent —
+      // skip if a webhook already created them for this registration).
+      if (updatedRegistration.tickets.length === 0) {
+        await prisma.$transaction((tx) =>
+          generateTicketsForRegistration(tx, updatedRegistration.id, updatedRegistration.numberOfAttendees, 0)
+        );
+      }
 
       // Send confirmation email (don't await to avoid blocking the response)
       const name = updatedRegistration.attendees.length > 0 

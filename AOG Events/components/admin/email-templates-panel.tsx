@@ -48,6 +48,8 @@ const TEMPLATE_LABELS: Record<TemplateName, string> = {
   admin_notification: "Admin Notification",
   ticket_confirmation: "Ticket Confirmation",
   confirmation_pdf: "Online Payment",
+  finance_payment_logged: "Finance — Payment Logged",
+  balance_update: "Registrant — Balance Update",
 };
 
 export function EmailTemplatesPanel() {
@@ -339,8 +341,7 @@ export function EmailTemplatesPanel() {
             </div>
             {form.ctaText && form.ctaUrl && (
               <div
-                className="inline-block rounded-lg text-white text-sm font-bold px-5 py-3"
-                style={{ background: "#FF6C00" }}
+                className="inline-block rounded-lg bg-brand-orange text-brand-white text-sm font-bold px-5 py-3"
               >
                 {form.ctaText}
               </div>

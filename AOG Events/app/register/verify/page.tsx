@@ -65,7 +65,7 @@ function VerifyContent() {
             </p>
             <button
               onClick={() => router.push("/")}
-              className="mt-2 inline-flex items-center gap-2 bg-brand-orange text-brand-white px-7 py-3 rounded-lg font-bold text-sm cursor-pointer border-none font-poppins tracking-[0.02em]"
+              className="mt-2 inline-flex items-center gap-2 bg-brand-orange text-brand-white px-7 py-3 rounded-lg font-bold text-sm cursor-pointer border-none tracking-[0.02em]"
             >
               Return to Home <ArrowRight size={15} />
             </button>
@@ -79,7 +79,7 @@ function VerifyContent() {
             <p className="text-sm text-[#f87171] leading-[1.6]">{message}</p>
             <button
               onClick={() => router.push("/")}
-              className="mt-2 inline-flex items-center gap-2 bg-white/8 text-brand-white px-7 py-3 rounded-lg font-semibold text-sm cursor-pointer border border-white/15 font-poppins"
+              className="mt-2 inline-flex items-center gap-2 bg-white/8 text-brand-white px-7 py-3 rounded-lg font-semibold text-sm cursor-pointer border border-white/15"
             >
               Try Again
             </button>
@@ -92,7 +92,7 @@ function VerifyContent() {
 
 export default function VerifyPage() {
   return (
-    <div className="bg-brand-black text-brand-white font-poppins min-h-screen flex flex-col">
+    <div className="bg-brand-black text-brand-white min-h-screen flex flex-col">
 
       {/* ── NAV ───────────────────────────────────────────────────────────── */}
       <nav className="brand-nav sticky">

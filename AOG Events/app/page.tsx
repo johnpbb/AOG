@@ -27,7 +27,7 @@ export default async function HomePage() {
   const events = await getPublishedEvents();
 
   return (
-    <div className="bg-brand-black text-brand-white font-poppins overflow-x-hidden">
+    <div className="bg-brand-black text-brand-white overflow-x-hidden">
 
       {/* ── NAV ─────────────────────────────────────────────────────────────── */}
       <nav className="brand-nav fixed">
@@ -41,11 +41,11 @@ export default async function HomePage() {
 
       {/* ── HERO ────────────────────────────────────────────────────────────── */}
       <section className="min-h-screen bg-brand-black flex items-center relative overflow-hidden">
-        <div className="absolute left-0 top-0 bottom-0 w-[72px] tapa-strip-y" />
-        <div className="absolute right-0 top-0 bottom-0 w-[72px] tapa-strip-y" />
+        <div className="absolute left-0 top-0 bottom-0 w-[72px] tapa-strip-y" aria-hidden="true" />
+        <div className="absolute right-0 top-0 bottom-0 w-[72px] tapa-strip-y" aria-hidden="true" />
         <div className="absolute inset-0 brand-hero-glow pointer-events-none" />
 
-        <div className="max-w-[820px] mx-auto px-[100px] pt-[120px] pb-[100px] text-center relative z-10">
+        <div className="max-w-[820px] mx-auto px-6 sm:px-10 md:px-16 lg:px-[100px] pt-[120px] pb-[100px] text-center relative z-10">
           <p className="text-xs font-semibold tracking-[0.25em] uppercase text-white/45 mb-8">
             Assemblies of God · Fiji · Est. 1926
           </p>
@@ -123,7 +123,7 @@ export default async function HomePage() {
               <p className="text-[#999]">Check back soon — events will appear here when published.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-7">
+            <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-7">
               {events.map((event) => {
                 const totalCapacity = event.venues.reduce((s, v) => s + v.capacity, 0);
                 const totalRegistered = event.venues.reduce((s, v) => s + v.currentRegistrations, 0);
@@ -132,8 +132,8 @@ export default async function HomePage() {
                 return (
                   <div key={event.id} className="bg-brand-white rounded-2xl overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.07)] border border-black/[0.06] flex flex-col">
                     {event.bannerUrl ? (
-                      <div className="h-[200px] overflow-hidden shrink-0">
-                        <img src={event.bannerUrl} alt={event.name} className="w-full h-full object-cover" />
+                      <div className="relative h-[200px] overflow-hidden shrink-0">
+                        <Image src={event.bannerUrl} alt={event.name} fill className="object-cover" />
                       </div>
                     ) : (
                       <div className="h-[200px] shrink-0 tapa-bg flex items-center justify-center">
@@ -186,11 +186,8 @@ export default async function HomePage() {
                           </div>
                           <div className="h-1 bg-[#f0f0f0] rounded-sm overflow-hidden">
                             <div
-                              className="h-full rounded-sm transition-[width] duration-[400ms] ease-in-out"
-                              style={{
-                                backgroundColor: pct >= 100 ? "#ef4444" : pct >= 80 ? "#f59e0b" : "var(--brand-orange)",
-                                width: `${Math.min(pct, 100)}%`,
-                              }}
+                              className={`h-full rounded-sm transition-[width] duration-[400ms] ease-in-out ${pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-brand-orange"}`}
+                              style={{ width: `${Math.min(pct, 100)}%` }}
                             />
                           </div>
                         </div>

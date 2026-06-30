@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn, getCapacityColor } from "@/lib/utils";
 import { MapPin, Users, AlertCircle } from "lucide-react";
 
 interface Venue {
@@ -20,12 +20,15 @@ interface VenueSelectorProps {
 export function VenueSelector({ selectedVenue, onSelect, venues }: VenueSelectorProps) {
   const getAvailability = (venue: Venue) => {
     const remaining = venue.capacity - venue.currentRegistrations;
-    const percentage = (remaining / venue.capacity) * 100;
-
-    if (percentage > 50) return { status: "available", color: "text-green-600", bg: "bg-green-500" };
-    if (percentage > 20) return { status: "limited", color: "text-yellow-600", bg: "bg-yellow-500" };
-    if (percentage > 0) return { status: "almost-full", color: "text-orange-600", bg: "bg-orange-500" };
-    return { status: "full", color: "text-red-600", bg: "bg-red-500" };
+    const usedPct = venue.capacity > 0 ? Math.round((venue.currentRegistrations / venue.capacity) * 100) : 100;
+    const isFull = usedPct >= 100;
+    return {
+      status: isFull ? "full" : usedPct >= 80 ? "almost-full" : "available",
+      color: isFull ? "text-red-600" : usedPct >= 80 ? "text-amber-600" : "text-muted-foreground",
+      bg: getCapacityColor(usedPct),
+      remaining,
+      usedPct,
+    };
   };
 
   if (venues.length === 0) {
@@ -48,7 +51,7 @@ export function VenueSelector({ selectedVenue, onSelect, venues }: VenueSelector
         {venues.map((venue) => {
           const availability = getAvailability(venue);
           const isFull = availability.status === "full";
-          const remaining = venue.capacity - venue.currentRegistrations;
+          const { remaining } = availability;
 
           return (
             <button

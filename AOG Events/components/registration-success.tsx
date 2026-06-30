@@ -5,6 +5,7 @@ import { CheckCircle, Clock, Download, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { QRCodeCanvas } from "qrcode.react";
+import { INSTALLMENT_DEADLINE } from "@/lib/types";
 
 interface BankDetails {
   bankName: string;
@@ -19,8 +20,16 @@ interface RegistrationSuccessProps {
   paymentMethod?: "bank-transfer" | "online" | string;
   fee?: number;
   numberOfTickets?: number;
+  paymentType?: string;
+  installmentCount?: number | null;
   onNewRegistration: () => void;
 }
+
+const installmentDeadlineLabel = INSTALLMENT_DEADLINE.toLocaleDateString("en-FJ", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
 
 // ── Pending (bank transfer) variant ─────────────────────────────────────────
 
@@ -29,6 +38,8 @@ function PendingScreen({
   email,
   fee,
   numberOfTickets,
+  paymentType,
+  installmentCount,
   onNewRegistration,
 }: Omit<RegistrationSuccessProps, "paymentMethod">) {
   const [bank, setBank] = useState<BankDetails | null>(null);
@@ -68,20 +79,19 @@ function PendingScreen({
 
       {/* Reference ID */}
       <div className="p-4 rounded-lg bg-secondary max-w-sm mx-auto space-y-1">
-        <div className="text-xs text-muted-foreground">Your Reference Number</div>
+        <div className="text-xs text-muted-foreground">Your Unique Registration ID</div>
         <div className="flex items-center justify-center gap-2">
           <span className="font-mono text-lg font-semibold text-foreground">{registrationId}</span>
           <button onClick={copyRef} className="text-muted-foreground hover:text-foreground transition-colors">
             {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">Use this as your payment reference</p>
       </div>
 
-      {/* Bank details */}
-      {hasBankDetails ? (
-        <div className="max-w-sm mx-auto rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20 p-5 text-left space-y-3">
-          <p className="text-sm font-semibold text-foreground">Bank Transfer Details</p>
+      {/* FAQ #1 — How can I pay */}
+      <div className="max-w-sm mx-auto rounded-xl border border-border bg-card p-5 text-left space-y-3">
+        <p className="text-sm font-semibold text-foreground">1. How can I pay for my registration?</p>
+        {hasBankDetails ? (
           <div className="space-y-2 text-sm">
             {bank.bankName && (
               <div className="flex justify-between">
@@ -104,26 +114,47 @@ function PendingScreen({
               </div>
             )}
             {fee !== undefined && (
-              <div className="flex justify-between border-t border-amber-200 dark:border-amber-900/40 pt-2">
+              <div className="flex justify-between border-t border-border pt-2">
                 <span className="text-muted-foreground">Amount (FJD)</span>
                 <span className="font-bold text-foreground">${fee.toLocaleString()}.00</span>
               </div>
             )}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Reference</span>
-              <span className="font-mono font-semibold text-foreground">{registrationId}</span>
-            </div>
           </div>
-        </div>
-      ) : bank !== null && !hasBankDetails ? (
-        <div className="max-w-sm mx-auto p-4 rounded-lg bg-secondary text-sm text-muted-foreground text-center">
-          Bank details will be emailed to you shortly.
-        </div>
-      ) : null}
+        ) : (
+          <p className="text-sm text-muted-foreground">Bank details will be emailed to you shortly.</p>
+        )}
+        <p className="text-sm text-muted-foreground">
+          Or pay cash at your nearest AGFJ Divisional Office or Headquarters.
+        </p>
+      </div>
 
-      <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-        A confirmation email with these details has been sent to <span className="font-medium text-foreground">{email}</span>. Tickets will be emailed once your transfer is verified — usually within 1–2 business days.
-      </p>
+      {/* FAQ #2 — How will HQ identify your payment */}
+      <div className="max-w-sm mx-auto rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20 p-5 text-left space-y-2">
+        <p className="text-sm font-semibold text-foreground">2. How will HQ identify my payment?</p>
+        <p className="text-sm text-muted-foreground">
+          You <span className="font-semibold">must</span> include your Unique Registration ID{" "}
+          <span className="font-mono font-semibold text-foreground">{registrationId}</span> in the payment narration / reference field of your bank transfer or M-PAiSA transaction.
+        </p>
+      </div>
+
+      {/* FAQ #3 — what happens after paying */}
+      <div className="max-w-sm mx-auto rounded-xl border border-border bg-card p-5 text-left space-y-2">
+        <p className="text-sm font-semibold text-foreground">3. I've paid — now what?</p>
+        <p className="text-sm text-muted-foreground">
+          Once the HQ Finance team manually matches your reference, you'll receive a confirmation receipt and your digital entry QR tokens by email at{" "}
+          <span className="font-medium text-foreground">{email}</span>.
+        </p>
+      </div>
+
+      {paymentType === "partial" && (
+        <div className="max-w-sm mx-auto rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20 p-5 text-left space-y-2">
+          <p className="text-sm font-semibold text-foreground">Partial Payment Plan</p>
+          <p className="text-sm text-muted-foreground">
+            You've chosen to pay in {installmentCount ?? "several"} installments. All installments must be fully paid by{" "}
+            <span className="font-semibold">{installmentDeadlineLabel}</span>. Your entry QR tokens will only be issued once your registration is fully paid.
+          </p>
+        </div>
+      )}
 
       <div className="pt-2 space-y-3">
         <Button onClick={onNewRegistration} variant="outline">

@@ -47,7 +47,7 @@ export default async function EventRegisterPage({ params }: Props) {
   };
 
   return (
-    <div className="bg-brand-black text-brand-white font-poppins min-h-screen">
+    <div className="bg-brand-black text-brand-white min-h-screen">
 
       {/* ── NAV ─────────────────────────────────────────────────────────────── */}
       <nav className="brand-nav fixed">

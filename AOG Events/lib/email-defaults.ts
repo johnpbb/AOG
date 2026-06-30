@@ -2,13 +2,17 @@ export type TemplateName =
   | "pending_registration"
   | "admin_notification"
   | "ticket_confirmation"
-  | "confirmation_pdf";
+  | "confirmation_pdf"
+  | "finance_payment_logged"
+  | "balance_update";
 
 export const TEMPLATE_NAMES: TemplateName[] = [
   "pending_registration",
   "admin_notification",
   "ticket_confirmation",
   "confirmation_pdf",
+  "finance_payment_logged",
+  "balance_update",
 ];
 
 export interface EmailTemplateContent {
@@ -48,6 +52,9 @@ export const TEMPLATE_META: Record<TemplateName, TemplateMeta> = {
       { name: "bankAccountNumber", description: "Account number", sample: "1234-567890" },
       { name: "bankBranch", description: "Branch / BSB", sample: "Suva Main" },
       { name: "eventName", description: "Event name", sample: "AOG Fiji 100th Anniversary" },
+      { name: "paymentType", description: "full or partial", sample: "partial" },
+      { name: "installmentCount", description: "Number of installments chosen (if partial)", sample: "6" },
+      { name: "installmentDeadline", description: "Final installment deadline", sample: "30 September 2026" },
     ],
   },
   admin_notification: {
@@ -88,6 +95,28 @@ export const TEMPLATE_META: Record<TemplateName, TemplateMeta> = {
       { name: "category", description: "Category label", sample: "Large Church" },
     ],
   },
+  finance_payment_logged: {
+    label: "Finance — Payment Logged",
+    description: "Sent to the finance mailbox the moment a staff member logs a payment entry.",
+    variables: [
+      { name: "registrationId", description: "Registration ID", sample: "AG100-027VL301" },
+      { name: "amount", description: "Amount just logged (FJD)", sample: "$500.00" },
+      { name: "totalPaid", description: "Running total paid (FJD)", sample: "$1,500.00" },
+      { name: "remainingBalance", description: "Remaining balance (FJD)", sample: "$8,500.00" },
+      { name: "confirmedByName", description: "Staff member who logged the payment", sample: "Mere Tuilagi" },
+    ],
+  },
+  balance_update: {
+    label: "Registrant — Balance Update",
+    description: "Sent to the registrant every time a payment is logged against their registration.",
+    variables: [
+      { name: "registrationId", description: "Registration ID", sample: "AG100-027VL301" },
+      { name: "amountReceived", description: "Amount just received (FJD)", sample: "$500.00" },
+      { name: "totalPaid", description: "Running total paid (FJD)", sample: "$1,500.00" },
+      { name: "remainingBalance", description: "Remaining balance (FJD)", sample: "$8,500.00" },
+      { name: "statusNote", description: "Status message — auto-set by the system", sample: "" },
+    ],
+  },
 };
 
 export const DEFAULT_TEMPLATES: Record<TemplateName, EmailTemplateContent> = {
@@ -95,10 +124,16 @@ export const DEFAULT_TEMPLATES: Record<TemplateName, EmailTemplateContent> = {
     subject: "Registration Received – {{registrationId}}",
     preHeading: "Registration Received",
     heading: "Hi {{registrantName}},",
-    bodyHtml: `<p>Your registration for <strong>{{eventName}}</strong> has been received and is currently <strong>pending payment verification</strong>.</p>`,
+    bodyHtml: `<p>Your registration for <strong>{{eventName}}</strong> has been received and is currently <strong>pending payment verification</strong>.</p>
+<p><strong>1. How can I pay for my registration?</strong><br/>
+Direct Bank Deposit / Internet Banking Transfer using the bank details below, or cash at your nearest AGFJ Divisional Office or Headquarters.</p>
+<p><strong>2. How will HQ identify my payment?</strong><br/>
+You must include your Unique Registration ID <strong>{{registrationId}}</strong> in the payment narration / reference field of your bank transfer or M-PAiSA transaction.</p>
+<p><strong>3. I've paid — now what?</strong><br/>
+Once the HQ Finance team manually matches your reference, you'll receive a confirmation receipt and your digital entry QR tokens by email.</p>`,
     ctaText: "",
     ctaUrl: "",
-    closingHtml: `<p>Once our team confirms your bank transfer, your tickets and QR codes will be sent to this email address. This usually takes <strong>1–2 business days</strong>.</p>`,
+    closingHtml: `<p>If you chose a partial payment plan, all installments must be fully paid by <strong>{{installmentDeadline}}</strong>. Entry QR tokens are issued once your registration is fully paid.</p>`,
   },
   admin_notification: {
     subject: "[Action Required] New Remittance – {{registrationId}}",
@@ -126,5 +161,23 @@ export const DEFAULT_TEMPLATES: Record<TemplateName, EmailTemplateContent> = {
     ctaText: "",
     ctaUrl: "",
     closingHtml: `<p>Please present this ticket along with a valid ID at the registration desk. This ticket is non-transferable.</p>`,
+  },
+  finance_payment_logged: {
+    subject: "Payment Logged – {{registrationId}}",
+    preHeading: "Payment Logged",
+    heading: "A payment has been logged",
+    bodyHtml: `<p><strong>{{confirmedByName}}</strong> logged a payment of <strong>{{amount}}</strong> against registration <strong>{{registrationId}}</strong>.</p>`,
+    ctaText: "",
+    ctaUrl: "",
+    closingHtml: `<p>Total paid so far: <strong>{{totalPaid}}</strong>. Remaining balance: <strong>{{remainingBalance}}</strong>.</p>`,
+  },
+  balance_update: {
+    subject: "Payment Received – {{registrationId}}",
+    preHeading: "Payment Received",
+    heading: "We've received your payment",
+    bodyHtml: `<p>We've recorded a payment of <strong>{{amountReceived}}</strong> against your registration <strong>{{registrationId}}</strong>.</p>`,
+    ctaText: "",
+    ctaUrl: "",
+    closingHtml: `<p>Total paid: <strong>{{totalPaid}}</strong>. Remaining balance: <strong>{{remainingBalance}}</strong>.</p><p>{{statusNote}}</p>`,
   },
 };

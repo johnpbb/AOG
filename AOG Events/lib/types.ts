@@ -18,6 +18,12 @@ export interface CategoryInfo {
   registrationLimit: number | null; // null = no registration count cap
   ticketPool: number;               // total seats shared across all registrations
   maxTicketsPerReg: number;         // max tickets one registration can request
+  /**
+   * Code used in the reference number formula: AG100-{churchId}{categoryCode}{total}.
+   * Spec only defined SM/MD/VL/OS/IN/MI — LG and CP are our provisional extensions
+   * for categories the client's spec didn't anticipate. Pending client sign-off.
+   */
+  categoryCode: string;
 }
 
 export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
@@ -31,6 +37,7 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     registrationLimit: 5,
     ticketPool: 2500,
     maxTicketsPerReg: 2500,
+    categoryCode: "VL",
   },
   {
     id: "large-church",
@@ -42,6 +49,7 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     registrationLimit: 50,
     ticketPool: 3500,
     maxTicketsPerReg: 3500,
+    categoryCode: "LG",
   },
   {
     id: "medium-church",
@@ -53,6 +61,7 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     registrationLimit: 132,
     ticketPool: 6000,
     maxTicketsPerReg: 6000,
+    categoryCode: "MD",
   },
   {
     id: "small-church",
@@ -64,6 +73,7 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     registrationLimit: 175,
     ticketPool: 4000,
     maxTicketsPerReg: 4000,
+    categoryCode: "SM",
   },
   {
     id: "church-plant",
@@ -75,6 +85,7 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     registrationLimit: 38,
     ticketPool: 1000,
     maxTicketsPerReg: 1000,
+    categoryCode: "CP",
   },
   {
     id: "world-fijian-congress",
@@ -86,6 +97,7 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     registrationLimit: 5,
     ticketPool: 1500,
     maxTicketsPerReg: 1500,
+    categoryCode: "OS",
   },
   {
     id: "wfc-partners",
@@ -97,6 +109,7 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     registrationLimit: null,
     ticketPool: 500,
     maxTicketsPerReg: 500,
+    categoryCode: "MI",
   },
   {
     id: "individual",
@@ -108,7 +121,39 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     registrationLimit: null,
     ticketPool: 1000,
     maxTicketsPerReg: 10,
+    categoryCode: "IN",
   },
+];
+
+// Pending final client confirmation — current working assumption is 13–25.
+export const YOUTH_AGE_RANGE = "13–25";
+export const KIDS_AGE_RANGE = "6–12";
+
+// Absolute final date for all installment payments (per client spec).
+export const INSTALLMENT_DEADLINE = new Date("2026-09-30T23:59:59+12:00");
+
+export const INSTALLMENT_OPTIONS = [5, 6, 7, 8, 9, 10];
+
+export interface GlossaryTerm {
+  term: string;
+  definition: string;
+}
+
+export const GLOSSARY_TERMS: GlossaryTerm[] = [
+  { term: "Small Church", definition: "AG Fiji church with 50–99 members." },
+  { term: "Medium Church", definition: "AG Fiji church with 100–199 members." },
+  { term: "Large Church", definition: "AG Fiji church with 200–499 members." },
+  { term: "Very Large Church", definition: "AG Fiji church with 500+ members." },
+  { term: "Church Plant", definition: "A new church under 50 members." },
+  { term: "World Fijian Congress (WFC)", definition: "Overseas Fijian church network representatives — Australia, New Zealand, USA, and Great Britain." },
+  { term: "AGFJ Missionaries", definition: "Missionaries and partners affiliated with AG Fiji serving overseas." },
+  { term: "Individual", definition: "Personal registration for international guests or anyone who doesn't fit a local AG Fiji church category." },
+  { term: "Adults", definition: "Attendees aged 26 and over." },
+  { term: "NextGen / Youth", definition: `Attendees aged ${YOUTH_AGE_RANGE}.` },
+  { term: "Kids", definition: `Attendees aged ${KIDS_AGE_RANGE}. Kids do not receive an entry QR code.` },
+  { term: "Registrar", definition: "The person filling out this registration form — may be different from the Pastor/Leader." },
+  { term: "Unique Registration ID", definition: "Your reference number for this registration. You must include it in your payment narration so HQ Finance can match your payment." },
+  { term: "AG100 / AGFJ100", definition: "AG Fiji's 100th Anniversary celebration." },
 ];
 
 export interface ChurchRegistration {

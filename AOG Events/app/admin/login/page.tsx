@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Lock } from "lucide-react";
+import { Lock, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,20 +22,20 @@ export default function AdminLoginPage() {
     const res = await fetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ email, password }),
     });
 
     if (res.ok) {
       router.push("/admin");
     } else {
-      setError("Incorrect password. Please try again.");
+      setError("Incorrect email or password. Please try again.");
       setPassword("");
     }
     setLoading(false);
   }
 
   return (
-    <div className="min-h-screen bg-brand-black flex items-center justify-center font-poppins">
+    <div className="min-h-screen bg-brand-black flex items-center justify-center">
       <div className="w-full max-w-sm px-6">
         <div className="flex justify-center mb-8">
           <Image
@@ -57,29 +60,35 @@ export default function AdminLoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                required
-                autoFocus
-                className="w-full bg-white/8 border border-white/15 rounded-lg px-4 py-3 text-brand-white placeholder:text-white/30 text-sm outline-none focus:border-brand-orange transition-colors"
-              />
-            </div>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              required
+              autoFocus
+              className="bg-white/8 border-white/15 text-brand-white placeholder:text-white/30 focus-visible:border-brand-orange focus-visible:ring-brand-orange/30"
+            />
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              required
+              className="bg-white/8 border-white/15 text-brand-white placeholder:text-white/30 focus-visible:border-brand-orange focus-visible:ring-brand-orange/30"
+            />
 
             {error && (
-              <p className="text-red-400 text-xs">{error}</p>
+              <p className="text-destructive text-xs">{error}</p>
             )}
 
-            <button
+            <Button
               type="submit"
-              disabled={loading || !password}
-              className="w-full bg-brand-orange text-white font-bold py-3 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-orange/90 transition-colors"
+              disabled={loading || !email || !password}
+              className="w-full bg-brand-orange text-brand-white hover:bg-brand-orange/90"
             >
-              {loading ? "Checking…" : "Sign In"}
-            </button>
+              {loading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Checking…</> : "Sign In"}
+            </Button>
           </form>
         </div>
       </div>

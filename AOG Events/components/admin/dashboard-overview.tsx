@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Users, Building2, CreditCard, CheckCircle, TrendingUp, MapPin, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
+
+const CHART_COLORS = ["bg-chart-1", "bg-chart-2", "bg-chart-3", "bg-chart-4", "bg-chart-5"];
 
 export function DashboardOverview() {
   const [statsData, setStatsData] = useState<any>(null);
@@ -136,15 +140,9 @@ export function DashboardOverview() {
                           {reg.category} • {formatDistanceToNow(new Date(reg.createdAt))} ago
                         </p>
                       </div>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          reg.paymentStatus === "COMPLETED"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
+                      <Badge variant={reg.paymentStatus === "COMPLETED" ? "success" : "secondary"}>
                         {reg.paymentStatus === "COMPLETED" ? "Confirmed" : "Pending"}
-                      </span>
+                      </Badge>
                     </div>
                   );
                 })
@@ -163,9 +161,9 @@ export function DashboardOverview() {
           <CardContent>
             <div className="space-y-3">
               {categories.length > 0 ? (
-                categories.map((cat: any) => (
+                categories.map((cat: any, idx: number) => (
                   <div key={cat.name} className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    <div className={cn("w-3 h-3 rounded-full", CHART_COLORS[idx % CHART_COLORS.length])} />
                     <div className="flex-1">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-foreground capitalize">{cat.name.replace(/-/g, ' ')}</span>
@@ -173,10 +171,8 @@ export function DashboardOverview() {
                       </div>
                       <div className="mt-1 h-2 rounded-full bg-secondary overflow-hidden">
                         <div
-                          className="h-full bg-blue-500"
-                          style={{
-                            width: `${Math.max((cat.count / totalRegistrations) * 100, 2)}%`,
-                          }}
+                          className={cn("h-full", CHART_COLORS[idx % CHART_COLORS.length])}
+                          style={{ width: `${Math.max((cat.count / totalRegistrations) * 100, 2)}%` }}
                         />
                       </div>
                     </div>

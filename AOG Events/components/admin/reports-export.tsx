@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,8 +10,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, FileSpreadsheet, FileText, Calendar, Filter } from "lucide-react";
+import {
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Calendar,
+  Filter,
+  Loader2,
+} from "lucide-react";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
+
+type Format = "csv" | "xlsx";
+type DateRange = "all" | "today" | "week" | "month";
+type CategoryFilter = "all" | "churches" | "individuals";
 
 const reportTypes = [
   {
@@ -22,7 +34,7 @@ const reportTypes = [
   {
     id: "payments",
     title: "Payment Status Report",
-    description: "Payment confirmations and pending transactions",
+    description: "Payment confirmations, pending transactions and revenue totals",
     icon: FileText,
   },
   {
@@ -34,27 +46,61 @@ const reportTypes = [
   {
     id: "categories",
     title: "Category Breakdown",
-    description: "Registration counts by category",
+    description: "Registration counts, attendees and revenue by category",
     icon: FileSpreadsheet,
   },
   {
     id: "checkin",
     title: "Check-In Report",
-    description: "Attendance tracking and check-in statistics",
+    description: "Attendance tracking and check-in history per registration",
     icon: FileText,
   },
   {
     id: "churches",
     title: "Church Directory",
-    description: "List of all registered churches with contact info",
+    description: "All registered churches with pastor and contact details",
     icon: FileSpreadsheet,
+  },
+  {
+    id: "ledger",
+    title: "Finance Ledger",
+    description: "Total fee, amount paid, and remaining balance per registration",
+    icon: FileText,
   },
 ];
 
 export function ReportsExport() {
-  const handleExport = (_reportId: string, _format: string) => {
-    // Export functionality to be implemented
-  };
+  const [dateRange, setDateRange] = useState<DateRange>("all");
+  const [category, setCategory] = useState<CategoryFilter>("all");
+  const [quickFormat, setQuickFormat] = useState<Format>("csv");
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function download(type: string, format: Format) {
+    const key = `${type}-${format}`;
+    setLoading(key);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ type, format, dateRange, category });
+      const res = await fetch(`/api/admin/reports?${params}`);
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const date = new Date().toISOString().split("T")[0];
+      a.download = `${type}-${date}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      setError(`Failed to download ${type} report. Please try again.`);
+    } finally {
+      setLoading(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -65,19 +111,25 @@ export function ReportsExport() {
         </p>
       </div>
 
+      {error && (
+        <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+          {error}
+        </div>
+      )}
+
       {/* Quick Export */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Quick Export</CardTitle>
           <CardDescription>
-            Download a complete export of all registration data
+            Download a complete export of all registration data with filters applied
           </CardDescription>
         </CardHeader>
         <CardContent>
           <FieldGroup className="grid gap-4 md:grid-cols-3">
             <Field>
               <FieldLabel>Date Range</FieldLabel>
-              <Select defaultValue="all">
+              <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
                 <SelectTrigger>
                   <Calendar className="h-4 w-4 mr-2" />
                   <SelectValue />
@@ -92,7 +144,7 @@ export function ReportsExport() {
             </Field>
             <Field>
               <FieldLabel>Category Filter</FieldLabel>
-              <Select defaultValue="all">
+              <Select value={category} onValueChange={(v) => setCategory(v as CategoryFilter)}>
                 <SelectTrigger>
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue />
@@ -106,20 +158,27 @@ export function ReportsExport() {
             </Field>
             <Field>
               <FieldLabel>Format</FieldLabel>
-              <Select defaultValue="csv">
+              <Select value={quickFormat} onValueChange={(v) => setQuickFormat(v as Format)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="csv">CSV (.csv)</SelectItem>
                   <SelectItem value="xlsx">Excel (.xlsx)</SelectItem>
-                  <SelectItem value="pdf">PDF (.pdf)</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
           </FieldGroup>
-          <Button className="mt-4 gap-2">
-            <Download className="h-4 w-4" />
+          <Button
+            className="mt-4 gap-2"
+            onClick={() => download("registrations", quickFormat)}
+            disabled={loading !== null}
+          >
+            {loading === `registrations-${quickFormat}` ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
             Export All Data
           </Button>
         </CardContent>
@@ -140,20 +199,27 @@ export function ReportsExport() {
                     {report.description}
                   </p>
                   <div className="flex gap-2 mt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleExport(report.id, "csv")}
-                    >
-                      CSV
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleExport(report.id, "xlsx")}
-                    >
-                      Excel
-                    </Button>
+                    {(["csv", "xlsx"] as Format[]).map((fmt) => {
+                      const key = `${report.id}-${fmt}`;
+                      const isLoading = loading === key;
+                      return (
+                        <Button
+                          key={fmt}
+                          variant="outline"
+                          size="sm"
+                          disabled={loading !== null}
+                          onClick={() => download(report.id, fmt)}
+                          className="gap-1.5"
+                        >
+                          {isLoading ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Download className="h-3.5 w-3.5" />
+                          )}
+                          {fmt.toUpperCase()}
+                        </Button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -162,28 +228,9 @@ export function ReportsExport() {
         ))}
       </div>
 
-      {/* Scheduled Reports */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Scheduled Reports</CardTitle>
-          <CardDescription>
-            Set up automatic report generation and email delivery
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-secondary/30">
-            <div>
-              <p className="font-medium text-foreground">Daily Summary Report</p>
-              <p className="text-sm text-muted-foreground">
-                Sent daily at 6:00 AM to admin@aog100.fj
-              </p>
-            </div>
-            <Button variant="outline" size="sm">
-              Configure
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <p className="text-xs text-muted-foreground">
+        Date range and category filters apply to all reports except Venue Capacity.
+      </p>
     </div>
   );
 }

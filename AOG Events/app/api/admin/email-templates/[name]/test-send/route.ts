@@ -53,6 +53,20 @@ const SAMPLE_VARS: Record<TemplateName, Record<string, string>> = {
     registrationId: "AOG100-TEST",
     category: "Large Church",
   },
+  finance_payment_logged: {
+    registrationId: "AG100-027VL301",
+    amount: "$500.00",
+    totalPaid: "$1,500.00",
+    remainingBalance: "$8,500.00",
+    confirmedByName: "Mere Tuilagi",
+  },
+  balance_update: {
+    registrationId: "AG100-027VL301",
+    amountReceived: "$500.00",
+    totalPaid: "$1,500.00",
+    remainingBalance: "$8,500.00",
+    statusNote: "Thank you — we'll let you know once your registration is fully paid.",
+  },
 };
 
 function buildDataBlocks(name: TemplateName, vars: Record<string, string>): string[] {

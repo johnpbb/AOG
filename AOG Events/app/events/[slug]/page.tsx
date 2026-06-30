@@ -33,7 +33,7 @@ export default async function EventPage({ params }: Props) {
   const seatsLeft = totalCapacity - totalRegistered;
 
   return (
-    <div className="bg-brand-black text-brand-white font-poppins min-h-screen">
+    <div className="bg-brand-black text-brand-white min-h-screen">
 
       {/* ── NAV ─────────────────────────────────────────────────────────────── */}
       <nav className="brand-nav fixed">
@@ -53,7 +53,7 @@ export default async function EventPage({ params }: Props) {
       {/* ── BANNER ──────────────────────────────────────────────────────────── */}
       {event.bannerUrl ? (
         <div className="relative h-[380px] overflow-hidden mt-[68px]">
-          <img src={event.bannerUrl} alt={event.name} className="w-full h-full object-cover" />
+          <Image src={event.bannerUrl} alt={event.name} fill className="object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 px-10 pb-9">
             <div className="max-w-[1200px] mx-auto">
@@ -75,13 +75,13 @@ export default async function EventPage({ params }: Props) {
       )}
 
       {/* ── CONTENT ─────────────────────────────────────────────────────────── */}
-      <div className="max-w-[1200px] mx-auto px-10 py-12 pb-20">
+      <div className="max-w-[1200px] mx-auto px-5 sm:px-10 py-12 pb-20">
 
         <Link href="/" className="inline-flex items-center gap-1.5 text-white/45 text-[13px] no-underline mb-10">
           <ArrowLeft size={14} /> All Events
         </Link>
 
-        <div className="grid grid-cols-[1fr_320px] gap-12 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12 items-start">
 
           {/* ── Main ────────────────────────────────────────────────────────── */}
           <div>
@@ -117,11 +117,8 @@ export default async function EventPage({ params }: Props) {
                         </div>
                         <div className="h-1 bg-white/10 rounded-sm overflow-hidden">
                           <div
-                            className="h-full rounded-sm transition-[width] duration-[400ms] ease-in-out"
-                            style={{
-                              backgroundColor: vPct >= 100 ? "#ef4444" : vPct >= 80 ? "#f59e0b" : "var(--brand-orange)",
-                              width: `${Math.min(vPct, 100)}%`,
-                            }}
+                            className={`h-full rounded-sm transition-[width] duration-[400ms] ease-in-out ${vPct >= 100 ? "bg-red-500" : vPct >= 80 ? "bg-amber-500" : "bg-brand-orange"}`}
+                            style={{ width: `${Math.min(vPct, 100)}%` }}
                           />
                         </div>
                         {venue.description && (
@@ -136,7 +133,7 @@ export default async function EventPage({ params }: Props) {
           </div>
 
           {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-          <div className="sticky top-[92px]">
+          <div className="lg:sticky lg:top-[92px]">
             <div className="bg-white/[0.04] border border-brand-orange/20 rounded-2xl p-7">
               <h2 className="text-base font-bold text-brand-white mb-6">Event Details</h2>
 

@@ -19,6 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Search, Filter, Eye, MoreHorizontal, Download, Loader2, XCircle, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,7 +70,7 @@ export function RegistrationsList() {
       if (!res.ok) throw new Error(data.error || "Failed to approve");
       await fetchRegistrations();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      toast.error(err.message);
     } finally {
       setApprovingId(null);
     }
@@ -89,7 +91,7 @@ export function RegistrationsList() {
       // Refresh list
       await fetchRegistrations();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      toast.error(err.message);
     } finally {
       setCancellingId(null);
     }
@@ -207,12 +209,12 @@ export function RegistrationsList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRegistrations.map((reg) => {
+                {filteredRegistrations.map((reg, idx) => {
                   const formData = reg.formData || {};
                   const name = `${formData.firstName || ""} ${formData.lastName || ""}`.trim() || reg.email;
-                  
+
                   return (
-                    <TableRow key={reg.id} className={reg.paymentStatus === "CANCELLED" ? "opacity-50" : ""}>
+                    <TableRow key={reg.id} className={`${idx % 2 === 1 ? "bg-muted/20" : ""} ${reg.paymentStatus === "CANCELLED" ? "opacity-50" : ""}`}>
                       <TableCell className="font-mono text-sm">{reg.registrationId}</TableCell>
                       <TableCell>
                         <div>
@@ -236,19 +238,18 @@ export function RegistrationsList() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              reg.paymentStatus === "COMPLETED"
-                                ? "bg-green-100 text-green-700"
-                                : reg.paymentStatus === "CANCELLED"
-                                ? "bg-gray-100 text-gray-500 line-through"
-                                : "bg-yellow-100 text-yellow-700"
-                            }`}
+                          <Badge
+                            variant={
+                              reg.paymentStatus === "COMPLETED" ? "success"
+                              : reg.paymentStatus === "CANCELLED" ? "outline"
+                              : "secondary"
+                            }
+                            className={reg.paymentStatus === "CANCELLED" ? "line-through" : ""}
                           >
                             {reg.paymentStatus === "COMPLETED" ? "Confirmed"
                               : reg.paymentStatus === "CANCELLED" ? "Cancelled"
                               : "Pending"}
-                          </span>
+                          </Badge>
                           {reg.paymentStatus === "PENDING" && reg.paymentMethod === "BANK_TRANSFER" && (
                             <Button
                               size="sm"

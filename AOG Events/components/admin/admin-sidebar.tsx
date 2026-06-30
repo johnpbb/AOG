@@ -13,12 +13,14 @@ import {
   LogOut,
   Settings,
   Mail,
+  Wallet,
+  ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-type AdminView = "overview" | "events" | "venues" | "registrations" | "reports" | "checkin" | "settings" | "email-templates";
+type AdminView = "overview" | "events" | "venues" | "registrations" | "ledger" | "reports" | "checkin" | "settings" | "email-templates" | "staff";
 
 interface AdminSidebarProps {
   activeView: AdminView;
@@ -30,9 +32,11 @@ const navItems = [
   { id: "events" as const, label: "Events", icon: CalendarDays },
   { id: "venues" as const, label: "Venues", icon: MapPin },
   { id: "registrations" as const, label: "Registrations", icon: Users },
+  { id: "ledger" as const, label: "Finance Ledger", icon: Wallet },
   { id: "reports" as const, label: "Reports", icon: FileText },
   { id: "checkin" as const, label: "Check-In", icon: QrCode },
   { id: "email-templates" as const, label: "Email Templates", icon: Mail },
+  { id: "staff" as const, label: "Staff Accounts", icon: ShieldCheck },
   { id: "settings" as const, label: "Settings", icon: Settings },
 ];
 

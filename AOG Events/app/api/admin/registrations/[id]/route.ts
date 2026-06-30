@@ -2,15 +2,21 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { PaymentStatus, TicketStatus } from "@prisma/client";
 import { sendTicketConfirmationEmail } from "@/lib/email";
+import { generateTicketsForRegistration } from "@/lib/tickets";
+import { getCurrentUser } from "@/lib/auth";
 import { format } from "date-fns";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
 
-// PATCH /api/admin/registrations/[id] — approve a pending bank transfer registration
+// PATCH /api/admin/registrations/[id] — one-click approve for a pending bank
+// transfer registration. Internally logs a FULL Payment row (rather than
+// just flipping the status flag) so every completion — old flow and new
+// ledger-driven flow alike — shares the same "Confirmed by" audit trail.
 export async function PATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const currentUser = await getCurrentUser();
 
   try {
     const registration = await prisma.registration.findUnique({
@@ -34,9 +40,25 @@ export async function PATCH(
       return NextResponse.json({ error: "Cannot approve a cancelled registration" }, { status: 409 });
     }
 
-    await prisma.registration.update({
-      where: { id },
-      data: { paymentStatus: PaymentStatus.COMPLETED },
+    let tickets = registration.tickets;
+    await prisma.$transaction(async (tx) => {
+      await tx.registration.update({
+        where: { id },
+        data: { paymentStatus: PaymentStatus.COMPLETED },
+      });
+      await tx.payment.create({
+        data: {
+          registrationId: id,
+          amount: registration.fee,
+          entryType: "FULL",
+          method: registration.paymentMethod,
+          referenceNote: "Approved via one-click registration approval",
+          confirmedById: currentUser?.id ?? null,
+        },
+      });
+      if (tickets.length === 0) {
+        tickets = await generateTicketsForRegistration(tx, id, registration.adults || registration.numberOfAttendees, registration.youth);
+      }
     });
 
     // Send tickets confirmation email
@@ -60,7 +82,7 @@ export async function PATCH(
         : "TBC",
       venueName: registration.venue?.name ?? "",
       venueCity: registration.venue?.city ?? "",
-      tickets: registration.tickets,
+      tickets,
       appUrl,
     });
 

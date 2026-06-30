@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CategoryInfo } from "@/lib/types";
 import { VenueSelector } from "./venue-selector";
+import { PaymentTypeSelector } from "./payment-type-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
@@ -21,6 +22,7 @@ interface Venue {
 interface IndividualRegistrationFormProps {
   category: CategoryInfo;
   onBack: () => void;
+  onCancel: () => void;
   onSubmit: (data: unknown) => void;
   eventId?: string;
   venues?: Venue[];
@@ -30,6 +32,7 @@ interface IndividualRegistrationFormProps {
 export function IndividualRegistrationForm({
   category,
   onBack,
+  onCancel,
   onSubmit,
   eventId,
   venues = [],
@@ -53,6 +56,8 @@ export function IndividualRegistrationForm({
     paymentMethod: "" as "online" | "bank-transfer" | "",
   });
   const [numberOfTickets, setNumberOfTickets] = useState(1);
+  const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
+  const [installmentCount, setInstallmentCount] = useState(5);
 
   const updateFormData = (field: string, value: string) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -68,18 +73,18 @@ export function IndividualRegistrationForm({
   const handleSubmit = async () => {
     setIsProcessing(true);
     setError(null);
-    const registrationId = `AOG100-${Date.now().toString(36).toUpperCase()}`;
 
     try {
       const dbResponse = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          registrationId,
           category: category.id,
           type: "individual",
           fee: totalFee,
           numberOfTickets,
+          paymentType: formData.paymentMethod === "online" ? "full" : paymentType,
+          installmentCount: formData.paymentMethod !== "online" && paymentType === "partial" ? installmentCount : null,
           eventId,
           ...formData,
         }),
@@ -87,6 +92,7 @@ export function IndividualRegistrationForm({
 
       const dbData = await dbResponse.json();
       if (!dbResponse.ok) throw new Error(dbData.error || "Could not save registration");
+      const registrationId = dbData.registrationId;
 
       if (formData.paymentMethod === "online" && totalFee > 0) {
         await loadAnzScript();
@@ -108,7 +114,15 @@ export function IndividualRegistrationForm({
           throw new Error(payData.error || "Failed to create payment session");
         }
       } else {
-        onSubmit({ category: category.id, registrationId, ...formData, numberOfTickets, fee: totalFee });
+        onSubmit({
+          category: category.id,
+          registrationId,
+          ...formData,
+          numberOfTickets,
+          fee: totalFee,
+          paymentType: formData.paymentMethod === "online" ? "full" : paymentType,
+          installmentCount: formData.paymentMethod !== "online" && paymentType === "partial" ? installmentCount : null,
+        });
       }
     } catch (err: any) {
       setIsProcessing(false);
@@ -149,7 +163,7 @@ export function IndividualRegistrationForm({
 
       {/* Error banner */}
       {error && (
-        <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+        <div role="alert" className="p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
           {error}
         </div>
       )}
@@ -232,7 +246,10 @@ export function IndividualRegistrationForm({
           </div>
 
           <div className="flex justify-between pt-4">
-            <Button variant="outline" onClick={onBack}>Back</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onBack}>Back</Button>
+              <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+            </div>
             <Button onClick={() => setStep(2)} disabled={!isStep1Valid}>Continue to Venue</Button>
           </div>
         </div>
@@ -270,6 +287,16 @@ export function IndividualRegistrationForm({
             </div>
           </div>
 
+          {formData.paymentMethod === "bank-transfer" && (
+            <PaymentTypeSelector
+              paymentType={paymentType}
+              onPaymentTypeChange={setPaymentType}
+              installmentCount={installmentCount}
+              onInstallmentCountChange={setInstallmentCount}
+              totalFee={totalFee}
+            />
+          )}
+
           {/* Summary */}
           <div className="p-4 rounded-lg bg-secondary space-y-2 text-sm">
             <h3 className="font-medium text-foreground">Registration Summary</h3>
@@ -288,7 +315,10 @@ export function IndividualRegistrationForm({
           </div>
 
           <div className="flex justify-between pt-4">
-            <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
+              <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+            </div>
             <Button onClick={handleSubmit} disabled={!isStep2Valid || !formData.paymentMethod || isProcessing}>
               {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : "Complete Registration"}
             </Button>

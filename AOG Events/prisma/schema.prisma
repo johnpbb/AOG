@@ -16,6 +16,28 @@ enum PaymentStatus {
 enum PaymentMethod {
   ONLINE
   BANK_TRANSFER
+  CASH
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  FINANCE
+  ADMIN
+}
+
+enum PaymentEntryType {
+  FULL
+  INSTALLMENT
+}
+
+enum PaymentEntryStatus {
+  CONFIRMED
+  REJECTED
+}
+
+enum TicketType {
+  ADULT
+  YOUTH
 }
 
 enum RegistrationType {
@@ -41,19 +63,80 @@ enum TicketStatus {
   USED
 }
 
+// Preloaded official church list (from the General Secretary). Churches are
+// NOT locked to a category in the data model — category is chosen manually
+// at registration time and validated against attendee counts, since HQ data
+// on church size is sometimes inaccurate.
+model Church {
+  id       String  @id // 3-digit code, e.g. "027" — used in the reference number
+  name     String
+  district String?
+  country  String  @default("Fiji") // Fiji | Australia | New Zealand | USA | United Kingdom
+  isActive Boolean @default(true)
+
+  registrations Registration[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([country])
+  @@index([name])
+}
+
+// Named staff accounts — replaces the single shared ADMIN_PASSWORD so payment
+// approvals can be attributed to a real person ("Confirmed by: [Name]").
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(ADMIN)
+  isActive     Boolean  @default(true)
+
+  paymentsConfirmed Payment[] @relation("ConfirmedBy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Append-only finance ledger — one row per manual payment entry (full or
+// installment). Corrections must be offsetting entries, never edits/deletes,
+// to preserve the audit trail.
+model Payment {
+  id             String       @id @default(cuid())
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId String
+
+  amount        Float
+  entryType     PaymentEntryType
+  status        PaymentEntryStatus @default(CONFIRMED)
+  method        PaymentMethod
+  referenceNote String?            @db.Text // Manual Override Box — bank ref, receipt no., teller, branch, notes
+  installmentNo Int? // e.g. 2 of 6 — display only
+
+  confirmedBy   User?    @relation("ConfirmedBy", fields: [confirmedById], references: [id])
+  confirmedById String?
+  confirmedAt   DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  @@index([registrationId])
+  @@index([confirmedById])
+}
+
 model Event {
   id          String      @id @default(cuid())
   name        String
   description String?     @db.Text
-  shortDesc   String?     // One-liner for cards
+  shortDesc   String? // One-liner for cards
   startDate   DateTime?
   endDate     DateTime?
   status      EventStatus @default(DRAFT)
-  bannerUrl   String?     // Hero image URL
-  location    String?     // General location label e.g. "Suva, Fiji"
-  
+  bannerUrl   String? // Hero image URL
+  location    String? // General location label e.g. "Suva, Fiji"
+
   // Slug for friendly URLs e.g. "aog-100th-anniversary"
-  slug        String      @unique
+  slug String @unique
 
   venues        Venue[]
   registrations Registration[]
@@ -86,19 +169,32 @@ model Venue {
 
 model Registration {
   id             String           @id @default(cuid())
-  registrationId String           @unique // Custom format e.g. AOG100-XXXX
+  registrationId String           @unique // Custom format e.g. AG100-027VL301
   type           RegistrationType
-  category       String           // very-large-church, small-church, individual, etc.
+  category       String // very-large-church, small-church, individual, etc.
+
+  // Church (church-path registrations only — null for Individual/Missionary)
+  churchId String?
+  church   Church? @relation(fields: [churchId], references: [id])
 
   // Contact Info
   email String
   phone String?
 
+  registrarName     String? // person filling out the form — distinct from pastorName
+  contactPreference String? // "church" | "personal"
+  contactPhone      String?
+  contactEmail      String?
+
   // Specific Data (JSON for flexibility between Church/Individual)
   formData Json
 
-  // Attendees
-  numberOfAttendees Int      @default(1)
+  // Attendees — adults/youth/kids only apply to church-path registrations;
+  // numberOfAttendees stays the authoritative total for every path.
+  numberOfAttendees Int        @default(1)
+  adults            Int        @default(0)
+  youth             Int        @default(0)
+  kids              Int        @default(0)
   attendees         Attendee[]
 
   // Event & Venue
@@ -111,10 +207,17 @@ model Registration {
   fee              Float
   paymentMethod    PaymentMethod
   paymentStatus    PaymentStatus @default(PENDING)
-  paymentSessionId String?       // For ANZ eGate
-  paymentRef       String?       // Success Indicator or Bank Ref
+  paymentSessionId String? // For ANZ eGate
+  paymentRef       String? // Success Indicator or Bank Ref
 
-  checkedInAt DateTime? // Legacy — first ever check-in timestamp (kept for backwards compat)
+  // Installment plan (manual tracking only — actual payments are logged via Payment rows)
+  paymentType         String    @default("full") // "full" | "partial"
+  installmentCount    Int? // 5–10 when partial
+  installmentDeadline DateTime?
+
+  payments Payment[]
+
+  checkedInAt      DateTime? // Legacy — first ever check-in timestamp (kept for backwards compat)
   checkIns         DailyCheckIn[]
   attendanceEvents AttendanceEvent[]
   tickets          Ticket[]
@@ -126,6 +229,7 @@ model Registration {
   @@index([email])
   @@index([eventId])
   @@index([venueId])
+  @@index([churchId])
 }
 
 // One row per attendee per event day — enables daily refresh of check-ins
@@ -134,7 +238,7 @@ model DailyCheckIn {
   registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
   registrationId String
 
-  checkInDate String   // YYYY-MM-DD — Fiji local date
+  checkInDate String // YYYY-MM-DD — Fiji local date
   checkedInAt DateTime @default(now()) // Exact UTC timestamp
 
   // Optional: which device / admin performed the check-in
@@ -165,13 +269,13 @@ model Attendee {
 
 // Append-only attendance event log — every scan (check-in / check-out / re-entry)
 model AttendanceEvent {
-  id             String              @id @default(cuid())
-  registration   Registration        @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
   registrationId String
 
-  eventDate  String              // YYYY-MM-DD Fiji local date
-  type       AttendanceEventType
-  timestamp  DateTime            @default(now())
+  eventDate String // YYYY-MM-DD Fiji local date
+  type      AttendanceEventType
+  timestamp DateTime            @default(now())
 
   // Flagged when a checkout is recorded with no prior check-in for that day
   isFlagged  Boolean @default(false)
@@ -200,19 +304,23 @@ model EmailTemplate {
 
 // Single-row site configuration — always one row with id="default"
 model SiteConfig {
-  id                  String   @id @default("default")
-  bankName            String   @default("")
-  bankAccountName     String   @default("")
-  bankAccountNumber   String   @default("")
-  bankBranch          String   @default("")
-  notificationEmail   String   @default("timoci@pacificbedbank.com")
-  updatedAt           DateTime @updatedAt
+  id                       String   @id @default("default")
+  bankName                 String   @default("")
+  bankAccountName          String   @default("")
+  bankAccountNumber        String   @default("")
+  bankBranch               String   @default("")
+  notificationEmail        String   @default("timoci@pacificbedbank.com")
+  financeNotificationEmail String   @default("aogfj_finance@connect.com.fj")
+  updatedAt                DateTime @updatedAt
 }
 
-// One ticket per seat purchased — each has its own unique QR code
+// One ticket per seat purchased — each has its own unique QR code.
+// ticketType is ADULT or YOUTH only — there is no KIDS value, so Kids
+// attendees structurally cannot be issued a ticket/QR code.
 model Ticket {
   id             String       @id @default(cuid())
   ticketNumber   String       @unique // e.g. AOG-TKT-00001
+  ticketType     TicketType   @default(ADULT)
   registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
   registrationId String
   status         TicketStatus @default(ACTIVE)

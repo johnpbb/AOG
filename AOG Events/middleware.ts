@@ -1,18 +1,22 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
-    const token = request.cookies.get("admin_token")?.value;
-    if (token !== process.env.ADMIN_PASSWORD) {
+    const token = request.cookies.get(SESSION_COOKIE)?.value;
+    const session = verifySessionToken(token);
+    if (!session) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
   }
 
   return NextResponse.next();
 }
+
+export const runtime = "nodejs";
 
 export const config = {
   matcher: ["/admin/:path*"],

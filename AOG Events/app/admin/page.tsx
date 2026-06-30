@@ -10,6 +10,8 @@ import { VenueManagement } from "@/components/admin/venue-management";
 import { ReportsExport } from "@/components/admin/reports-export";
 import { SettingsPanel } from "@/components/admin/settings-panel";
 import { EmailTemplatesPanel } from "@/components/admin/email-templates-panel";
+import { StaffAccountsPanel } from "@/components/admin/staff-accounts-panel";
+import { BalanceLedgerPanel } from "@/components/admin/balance-ledger-panel";
 import dynamic from "next/dynamic";
 
 const CheckInSystem = dynamic(
@@ -17,7 +19,7 @@ const CheckInSystem = dynamic(
   { ssr: false }
 );
 
-type AdminView = "overview" | "events" | "venues" | "registrations" | "reports" | "checkin" | "settings" | "email-templates";
+type AdminView = "overview" | "events" | "venues" | "registrations" | "ledger" | "reports" | "checkin" | "settings" | "email-templates" | "staff";
 
 export default function AdminPage() {
   const [activeView, setActiveView] = useState<AdminView>("overview");
@@ -32,12 +34,16 @@ export default function AdminPage() {
         return <RegistrationsList />;
       case "venues":
         return <VenueManagement />;
+      case "ledger":
+        return <BalanceLedgerPanel />;
       case "reports":
         return <ReportsExport />;
       case "checkin":
         return <CheckInSystem />;
       case "email-templates":
         return <EmailTemplatesPanel />;
+      case "staff":
+        return <StaffAccountsPanel />;
       case "settings":
         return <SettingsPanel />;
       default:

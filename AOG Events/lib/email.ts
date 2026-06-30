@@ -153,6 +153,9 @@ interface PendingEmailParams {
   bankAccountNumber: string;
   bankBranch: string;
   eventName: string;
+  paymentType?: string;
+  installmentCount?: number | null;
+  installmentDeadline?: string;
 }
 
 export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
@@ -169,6 +172,9 @@ export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
     bankAccountNumber: p.bankAccountNumber || "—",
     bankBranch: p.bankBranch || "",
     eventName: p.eventName,
+    paymentType: p.paymentType ?? "full",
+    installmentCount: p.installmentCount ? String(p.installmentCount) : "",
+    installmentDeadline: p.installmentDeadline ?? "30 September 2026",
   };
 
   const dataBlocks: string[] = [
@@ -340,5 +346,82 @@ export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
         contentType: "application/pdf",
       },
     ],
+  });
+}
+
+// ── Finance ledger notifications ──────────────────────────────────────────
+
+interface FinanceNotificationParams {
+  to: string;
+  registrationId: string;
+  amount: number;
+  totalPaid: number;
+  remainingBalance: number;
+  confirmedByName: string;
+}
+
+export async function sendFinanceNotificationEmail(p: FinanceNotificationParams) {
+  const template = await loadTemplate("finance_payment_logged");
+
+  const vars: Record<string, string> = {
+    registrationId: p.registrationId,
+    amount: `$${p.amount.toFixed(2)}`,
+    totalPaid: `$${p.totalPaid.toFixed(2)}`,
+    remainingBalance: `$${p.remainingBalance.toFixed(2)}`,
+    confirmedByName: p.confirmedByName,
+  };
+
+  const dataBlocks: string[] = [
+    `<table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;">
+      ${pill("Registration", p.registrationId)}
+      ${pill("Amount Logged", `$${p.amount.toFixed(2)}`)}
+      ${pill("Total Paid", `$${p.totalPaid.toFixed(2)}`)}
+      ${pill("Remaining Balance", `$${p.remainingBalance.toFixed(2)}`)}
+      ${pill("Confirmed By", p.confirmedByName)}
+    </table>`,
+  ];
+
+  const { subject, html } = renderEmailTemplate(template, vars, dataBlocks);
+  await transporter.sendMail({
+    from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
+    to: p.to, subject, html,
+  });
+}
+
+interface BalanceUpdateParams {
+  to: string;
+  registrationId: string;
+  amountReceived: number;
+  totalPaid: number;
+  remainingBalance: number;
+  fullyPaid: boolean;
+}
+
+export async function sendBalanceUpdateEmail(p: BalanceUpdateParams) {
+  const template = await loadTemplate("balance_update");
+
+  const vars: Record<string, string> = {
+    registrationId: p.registrationId,
+    amountReceived: `$${p.amountReceived.toFixed(2)}`,
+    totalPaid: `$${p.totalPaid.toFixed(2)}`,
+    remainingBalance: `$${p.remainingBalance.toFixed(2)}`,
+    statusNote: p.fullyPaid
+      ? "Your registration is now fully paid — your entry QR tickets are on their way in a separate email."
+      : "Thank you — we'll let you know once your registration is fully paid.",
+  };
+
+  const dataBlocks: string[] = [
+    `<table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;">
+      ${pill("Registration", p.registrationId)}
+      ${pill("Amount Received", `$${p.amountReceived.toFixed(2)}`)}
+      ${pill("Total Paid", `$${p.totalPaid.toFixed(2)}`)}
+      ${pill("Remaining Balance", `$${p.remainingBalance.toFixed(2)}`)}
+    </table>`,
+  ];
+
+  const { subject, html } = renderEmailTemplate(template, vars, dataBlocks);
+  await transporter.sendMail({
+    from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
+    to: p.to, subject, html,
   });
 }

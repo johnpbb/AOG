@@ -1,13 +1,29 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { REGISTRATION_CATEGORIES } from "@/lib/types";
+import { REGISTRATION_CATEGORIES, INSTALLMENT_DEADLINE } from "@/lib/types";
 import {
   sendPendingRegistrationEmail,
   sendAdminNotificationEmail,
 } from "@/lib/email";
 
-function padTicketNumber(n: number): string {
-  return `AOG-TKT-${String(n).padStart(5, "0")}`;
+// Builds the spec's reference number: AG100-{3-digit churchId}{categoryCode}{total}.
+// Non-church registrations (no real Church match) use "000" as the church-ID block.
+// If the exact combination already exists (e.g. same church re-registers at the
+// same headcount), a numeric suffix is appended to keep the ID unique.
+async function generateRegistrationId(
+  tx: any,
+  churchId: string | null,
+  categoryCode: string,
+  total: number
+): Promise<string> {
+  const base = `AG100-${churchId ?? "000"}${categoryCode}${total}`;
+  let candidate = base;
+  let suffix = 2;
+  while (await tx.registration.findUnique({ where: { registrationId: candidate } })) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
 }
 
 export async function POST(request: Request) {
@@ -15,16 +31,25 @@ export async function POST(request: Request) {
     const data = await request.json();
 
     const {
-      registrationId,
       category,
       type = "individual",
       email,
       phone,
+      churchId,
+      registrarName,
+      contactPreference,
+      contactPhone,
+      contactEmail,
       venue,
       eventId,
       paymentMethod,
       fee,
       numberOfTickets = 1,
+      adults,
+      youth,
+      kids,
+      paymentType,
+      installmentCount,
       attendees,
       ...rest
     } = data;
@@ -37,7 +62,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "venue (venueId) is required" }, { status: 400 });
     }
 
-    const qty = Math.max(1, parseInt(String(numberOfTickets), 10) || 1);
+    const isChurchPath = (type || "").toLowerCase() === "church";
+    const numAdults = isChurchPath ? Math.max(0, parseInt(String(adults), 10) || 0) : 0;
+    const numYouth = isChurchPath ? Math.max(0, parseInt(String(youth), 10) || 0) : 0;
+    const numKids = isChurchPath ? Math.max(0, parseInt(String(kids), 10) || 0) : 0;
+    const qty = isChurchPath
+      ? numAdults + numYouth + numKids
+      : Math.max(1, parseInt(String(numberOfTickets), 10) || 1);
+    // Kids don't receive a ticket/QR code — only adults and youth do.
+    const ticketQty = isChurchPath ? numAdults + numYouth : qty;
     const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === category);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -53,24 +86,45 @@ export async function POST(request: Request) {
       }
 
       if (catInfo) {
-        const ticketCount = await tx.ticket.count({
-          where: { status: "ACTIVE", registration: { category } },
+        // Seats are reserved against the pool the moment a registration is
+        // submitted (even while payment is pending) — entry QR tickets
+        // themselves aren't generated until the registration is fully paid
+        // (see lib/tickets.ts), so we can't count Ticket rows here.
+        const activeRegs = await tx.registration.findMany({
+          where: { category, paymentStatus: { not: "CANCELLED" } },
+          select: { type: true, adults: true, youth: true, numberOfAttendees: true },
         });
-        const remaining = catInfo.ticketPool - ticketCount;
-        if (qty > remaining) {
+        const reservedSeats = activeRegs.reduce(
+          (sum: number, r: any) => sum + (r.type === "CHURCH" ? r.adults + r.youth : r.numberOfAttendees),
+          0
+        );
+        const remaining = catInfo.ticketPool - reservedSeats;
+        if (ticketQty > remaining) {
           throw new Error(
-            `POOL_EXCEEDED: Only ${remaining} tickets remain in the ${catInfo.name} pool. You requested ${qty}.`
+            `POOL_EXCEEDED: Only ${remaining} seats remain in the ${catInfo.name} pool. You requested ${ticketQty}.`
           );
         }
       }
+
+      const registrationId = await generateRegistrationId(
+        tx,
+        churchId || null,
+        catInfo?.categoryCode ?? "XX",
+        qty
+      );
 
       const registration = await tx.registration.create({
         data: {
           registrationId,
           category: category || "unknown",
           type: (type || "individual").toUpperCase() as any,
+          churchId: churchId || null,
           email: email || "unknown",
           phone: phone || null,
+          registrarName: registrarName || null,
+          contactPreference: contactPreference || null,
+          contactPhone: contactPhone || null,
+          contactEmail: contactEmail || null,
           eventId,
           venueId: venue,
           fee: parseFloat(String(fee)) || 0,
@@ -78,6 +132,12 @@ export async function POST(request: Request) {
           paymentStatus: "PENDING",
           formData: rest || {},
           numberOfAttendees: qty,
+          adults: numAdults,
+          youth: numYouth,
+          kids: numKids,
+          paymentType: paymentType === "partial" ? "partial" : "full",
+          installmentCount: paymentType === "partial" ? parseInt(String(installmentCount), 10) || null : null,
+          installmentDeadline: paymentType === "partial" ? INSTALLMENT_DEADLINE : null,
           ...(Array.isArray(attendees) && attendees.length > 0
             ? {
                 attendees: {
@@ -93,32 +153,15 @@ export async function POST(request: Request) {
         },
       });
 
-      const maxResult = await tx.$queryRaw<{ max: string | null }[]>`
-        SELECT MAX(CAST(SUBSTRING("ticketNumber" FROM 9) AS INTEGER)) AS max
-        FROM "Ticket"
-        WHERE "ticketNumber" LIKE 'AOG-TKT-%'
-      `;
-      const nextSeq = (Number(maxResult[0]?.max) || 0) + 1;
-
-      const ticketData = Array.from({ length: qty }, (_, i) => ({
-        ticketNumber: padTicketNumber(nextSeq + i),
-        registrationId: registration.id,
-        status: "ACTIVE" as const,
-      }));
-
-      await tx.ticket.createMany({ data: ticketData });
-
       await tx.venue.update({
         where: { id: venue },
-        data: { currentRegistrations: { increment: qty } },
+        data: { currentRegistrations: { increment: ticketQty } },
       });
 
-      const tickets = await tx.ticket.findMany({
-        where: { registrationId: registration.id },
-        orderBy: { ticketNumber: "asc" },
-      });
-
-      return { registration, tickets };
+      // Entry QR tickets are issued only once the registration is fully paid
+      // (see lib/tickets.ts) — via admin approval, the finance ledger, or the
+      // online-payment verification callback. None exist yet at submission time.
+      return { registration, tickets: [] as { id: string; ticketNumber: string }[] };
     });
 
     // ── Send emails for bank transfer registrations ────────────────────────
@@ -146,6 +189,11 @@ export async function POST(request: Request) {
         bankAccountNumber: siteConfig?.bankAccountNumber ?? "",
         bankBranch: siteConfig?.bankBranch ?? "",
         eventName,
+        paymentType: result.registration.paymentType,
+        installmentCount: result.registration.installmentCount,
+        installmentDeadline: result.registration.installmentDeadline
+          ? result.registration.installmentDeadline.toLocaleDateString("en-FJ", { day: "numeric", month: "long", year: "numeric" })
+          : undefined,
       };
 
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

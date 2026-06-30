@@ -43,6 +43,20 @@ const SAMPLE_VARS: Record<TemplateName, Record<string, string>> = {
     registrationId: "AOG100-0001",
     category: "Large Church",
   },
+  finance_payment_logged: {
+    registrationId: "AG100-027VL301",
+    amount: "$500.00",
+    totalPaid: "$1,500.00",
+    remainingBalance: "$8,500.00",
+    confirmedByName: "Mere Tuilagi",
+  },
+  balance_update: {
+    registrationId: "AG100-027VL301",
+    amountReceived: "$500.00",
+    totalPaid: "$1,500.00",
+    remainingBalance: "$8,500.00",
+    statusNote: "Thank you — we'll let you know once your registration is fully paid.",
+  },
 };
 
 function buildDataBlocks(name: TemplateName, vars: Record<string, string>): string[] {
@@ -103,6 +117,16 @@ function buildDataBlocks(name: TemplateName, vars: Record<string, string>): stri
       <table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;margin-bottom:20px;">
         ${pill("Registration ID", vars.registrationId)}
         ${pill("Category", vars.category)}
+      </table>
+    `);
+  }
+
+  if (name === "finance_payment_logged" || name === "balance_update") {
+    blocks.push(`
+      <table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;">
+        ${pill("Registration", vars.registrationId)}
+        ${pill("Total Paid", vars.totalPaid)}
+        ${pill("Remaining Balance", vars.remainingBalance)}
       </table>
     `);
   }
