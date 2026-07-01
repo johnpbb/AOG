@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { Lock, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -81,6 +82,12 @@ export default function AdminLoginPage() {
             {error && (
               <p className="text-destructive text-xs">{error}</p>
             )}
+
+            <div className="flex justify-end">
+              <Link href="/admin/forgot-password" className="text-white/40 text-xs hover:text-white/60">
+                Forgot password?
+              </Link>
+            </div>
 
             <Button
               type="submit"

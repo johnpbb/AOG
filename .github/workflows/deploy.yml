@@ -31,6 +31,9 @@ jobs:
             echo "── Installing dependencies ──"
             npm ci
 
+            echo "── Applying DB migrations ──"
+            npx prisma db push --accept-data-loss
+
             echo "── Building ──"
             npm run build
 

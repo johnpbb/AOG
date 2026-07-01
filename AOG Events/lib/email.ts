@@ -388,6 +388,46 @@ export async function sendFinanceNotificationEmail(p: FinanceNotificationParams)
   });
 }
 
+// ── Password reset email ──────────────────────────────────────────────────────
+
+export async function sendPasswordResetEmail(to: string, resetUrl: string) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <body style="margin:0;padding:0;background:#0a0a0a;font-family:sans-serif;">
+      <table cellpadding="0" cellspacing="0" style="width:100%;background:#0a0a0a;padding:40px 20px;">
+        <tr><td align="center">
+          <table cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;">
+            <tr><td style="padding-bottom:32px;text-align:center;">
+              <span style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">AOG Fiji 100th</span>
+            </td></tr>
+            <tr><td style="background:#141414;border-radius:12px;padding:40px;border:1px solid rgba(255,255,255,0.08);">
+              <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#ffffff;">Reset your password</h1>
+              <p style="margin:0 0 28px;font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6;">
+                We received a request to reset your admin password. Click the button below to choose a new one.
+              </p>
+              <a href="${resetUrl}" style="display:inline-block;background:#ff6c00;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;">
+                Reset Password
+              </a>
+              <p style="margin:28px 0 0;font-size:12px;color:rgba(255,255,255,0.3);line-height:1.6;">
+                This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  await transporter.sendMail({
+    from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
+    to,
+    subject: "Reset your AOG Admin password",
+    html,
+  });
+}
+
 interface BalanceUpdateParams {
   to: string;
   registrationId: string;
