@@ -22,7 +22,7 @@ jobs:
           script: |
             set -e
             export PATH="/opt/nodejs20/bin:$PATH"
-            cd "${{ secrets.DEPLOY_PATH }}"
+            cd "/home/aog/apps/aog/AOG Events"
 
             echo "── Pulling latest code ──"
             git fetch origin main
