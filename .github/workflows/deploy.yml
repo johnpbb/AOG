@@ -35,8 +35,7 @@ jobs:
             npm run build
 
             echo "── Restarting app ──"
-            cd /home/aog
-            ./stop
-            ./start
+            bash ~/apps/aog/stop
+            bash ~/apps/aog/start
 
             echo "── Done ──"
