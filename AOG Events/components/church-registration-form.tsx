@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
 import { Building, MapPin, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 interface Venue {
   id: string;
@@ -64,6 +65,7 @@ export function ChurchRegistrationForm({
   const total = adults + youth + kids;
   const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
   const [installmentCount, setInstallmentCount] = useState(5);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const updateFormData = (field: string, value: string) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -113,6 +115,7 @@ export function ChurchRegistrationForm({
           installmentCount: paymentType === "partial" ? installmentCount : null,
           eventId,
           venue: formData.venue,
+          turnstileToken,
         }),
       });
 
@@ -352,12 +355,16 @@ export function ChurchRegistrationForm({
             </div>
           </div>
 
+          <div className="flex justify-center">
+            <TurnstileWidget onVerify={setTurnstileToken} />
+          </div>
+
           <div className="flex justify-between pt-4">
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
               <Button variant="ghost" onClick={onCancel}>Cancel</Button>
             </div>
-            <Button onClick={handleSubmit} disabled={!isStep2Valid || isProcessing}>
+            <Button onClick={handleSubmit} disabled={!isStep2Valid || !turnstileToken || isProcessing}>
               {isProcessing
                 ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting…</>
                 : "Submit Registration"}

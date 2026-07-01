@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   description: 'Register for the Assemblies of God Fiji 100th Anniversary Celebration Event',
   generator: 'v0.app',
   icons: {
-    shortcut: '/favicon.ico',
-    icon: '/favicon.ico',
+    shortcut: '/favicon.png',
+    icon: '/favicon.png',
   },
 }
 

@@ -6,6 +6,23 @@ import {
   sendAdminNotificationEmail,
 } from "@/lib/email";
 
+async function verifyTurnstileToken(token: string | undefined, ip: string | null): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) return true; // widget not configured — skip verification
+  if (!token) return false;
+
+  const body = new URLSearchParams({ secret, response: token });
+  if (ip) body.set("remoteip", ip);
+
+  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const result = await res.json();
+  return result.success === true;
+}
+
 // Builds the spec's reference number: AG100-{3-digit churchId}{categoryCode}{total}.
 // Non-church registrations (no real Church match) use "000" as the church-ID block.
 // If the exact combination already exists (e.g. same church re-registers at the
@@ -51,8 +68,15 @@ export async function POST(request: Request) {
       paymentType,
       installmentCount,
       attendees,
+      turnstileToken,
       ...rest
     } = data;
+
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+    const humanVerified = await verifyTurnstileToken(turnstileToken, clientIp);
+    if (!humanVerified) {
+      return NextResponse.json({ error: "Verification failed. Please try again." }, { status: 400 });
+    }
 
     if (!eventId) {
       return NextResponse.json({ error: "eventId is required" }, { status: 400 });

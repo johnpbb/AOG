@@ -10,6 +10,7 @@ import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
 import { User, CreditCard, Minus, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { loadAnzScript, initAnzPayment } from "@/lib/anz-egate-client";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 interface Venue {
   id: string;
@@ -58,6 +59,7 @@ export function IndividualRegistrationForm({
   const [numberOfTickets, setNumberOfTickets] = useState(1);
   const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
   const [installmentCount, setInstallmentCount] = useState(5);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const updateFormData = (field: string, value: string) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -86,6 +88,7 @@ export function IndividualRegistrationForm({
           paymentType: formData.paymentMethod === "online" ? "full" : paymentType,
           installmentCount: formData.paymentMethod !== "online" && paymentType === "partial" ? installmentCount : null,
           eventId,
+          turnstileToken,
           ...formData,
         }),
       });
@@ -314,12 +317,16 @@ export function IndividualRegistrationForm({
             </div>
           </div>
 
+          <div className="flex justify-center">
+            <TurnstileWidget onVerify={setTurnstileToken} />
+          </div>
+
           <div className="flex justify-between pt-4">
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
               <Button variant="ghost" onClick={onCancel}>Cancel</Button>
             </div>
-            <Button onClick={handleSubmit} disabled={!isStep2Valid || !formData.paymentMethod || isProcessing}>
+            <Button onClick={handleSubmit} disabled={!isStep2Valid || !formData.paymentMethod || !turnstileToken || isProcessing}>
               {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : "Complete Registration"}
             </Button>
           </div>
