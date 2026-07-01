@@ -21,8 +21,9 @@ jobs:
           port: 22
           script: |
             set -e
-            source scl_source enable nodejs20
-            cd "/home/aog/apps/aog/AOG Events"
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            cd "${{ secrets.DEPLOY_PATH }}"
 
             echo "── Pulling latest code ──"
             git fetch origin main
@@ -34,8 +35,9 @@ jobs:
             echo "── Building ──"
             npm run build
 
-            echo "── Reloading app (zero-downtime) ──"
-            pm2 reload aog-events --update-env
+            echo "── Restarting app ──"
+            cd /home/aog
+            ./stop
+            ./start
 
             echo "── Done ──"
-            pm2 status aog-events
