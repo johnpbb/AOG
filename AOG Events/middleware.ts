@@ -5,7 +5,8 @@ import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
+  const publicAdminPaths = ["/admin/login", "/admin/forgot-password", "/admin/reset-password"];
+  if (pathname.startsWith("/admin") && !publicAdminPaths.some((p) => pathname.startsWith(p))) {
     const token = request.cookies.get(SESSION_COOKIE)?.value;
     const session = verifySessionToken(token);
     if (!session) {
