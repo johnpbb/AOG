@@ -52,7 +52,7 @@ const reportTypes = [
   {
     id: "checkin",
     title: "Check-In Report",
-    description: "Attendance tracking and check-in history per registration",
+    description: "Attendance tracking and check-in history per ticket",
     icon: FileText,
   },
   {

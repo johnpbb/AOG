@@ -13,10 +13,13 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 type ActionType = "CHECK_IN" | "CHECK_OUT" | "RE_ENTRY";
+type TicketType = "ADULT" | "YOUTH";
 
 interface ScanResult {
   success: boolean;
   action?: ActionType;
+  ticketNumber?: string;
+  ticketType?: TicketType;
   registrationId: string;
   name: string;
   category: string;
@@ -32,6 +35,7 @@ interface AttendanceEvent {
   timestamp: string;
   isFlagged: boolean;
   flagReason?: string;
+  ticket?: { ticketNumber: string; ticketType: TicketType } | null;
   registration: {
     registrationId: string;
     category: string;
@@ -44,9 +48,21 @@ interface DailyStats {
   checkInsToday: number;
   checkOutsToday: number;
   currentlyInside: number;
+  insideByType: { ADULT: number; YOUTH: number };
+  totalTickets: number;
   totalRegistrations: number;
   events: AttendanceEvent[];
   flagged: AttendanceEvent[];
+}
+
+function TicketTypeBadge({ type }: { type?: TicketType }) {
+  if (!type) return null;
+  return (
+    <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide",
+      type === "ADULT" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700")}>
+      {type}
+    </span>
+  );
 }
 
 const ACTION_CONFIG = {
@@ -110,7 +126,7 @@ export function CheckInSystem() {
       const res = await fetch("/api/admin/check-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ registrationId: id }),
+        body: JSON.stringify({ code: id }),
       });
       const data = await res.json();
       setLastResult(data);
@@ -133,7 +149,7 @@ export function CheckInSystem() {
       const res = await fetch("/api/admin/check-in", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ registrationId: manualCheckoutId.trim() }),
+        body: JSON.stringify({ ticketNumber: manualCheckoutId.trim() }),
       });
       const data = await res.json();
       setLastResult({ ...data, action: "CHECK_OUT" });
@@ -157,8 +173,8 @@ export function CheckInSystem() {
     return ACTION_CONFIG[result.action || "CHECK_IN"];
   };
 
-  const pct = stats && stats.totalRegistrations > 0
-    ? Math.round((stats.checkInsToday / stats.totalRegistrations) * 100) : 0;
+  const pct = stats && stats.totalTickets > 0
+    ? Math.round((stats.checkInsToday / stats.totalTickets) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -198,6 +214,11 @@ export function CheckInSystem() {
           <CardContent className="p-4 text-center">
             <div className="text-3xl font-bold text-purple-700">{stats?.currentlyInside ?? "—"}</div>
             <div className="text-xs text-purple-600 font-medium mt-0.5">Currently Inside</div>
+            {stats && (stats.insideByType.ADULT > 0 || stats.insideByType.YOUTH > 0) && (
+              <div className="text-[10px] text-purple-500 mt-0.5">
+                {stats.insideByType.ADULT} Adult · {stats.insideByType.YOUTH} Youth
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -213,7 +234,7 @@ export function CheckInSystem() {
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Today's check-in progress</span>
-            <span>{stats.checkInsToday} / {stats.totalRegistrations} registered</span>
+            <span>{stats.checkInsToday} / {stats.totalTickets} tickets</span>
           </div>
           <div className="h-3 rounded-full bg-secondary overflow-hidden">
             <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
@@ -253,13 +274,13 @@ export function CheckInSystem() {
                 {isScanning ? <><XCircle className="h-4 w-4" /> Stop</> : <><Camera className="h-4 w-4" /> Start Scanner</>}
               </Button>
 
-              {/* Manual QR entry */}
+              {/* Manual ticket entry */}
               <div className="pt-3 border-t border-border space-y-2">
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Manual Scan (check-in or check-out)</p>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Manual Ticket Entry (check-in or check-out)</p>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="AOG100-XXXXXX" value={manualId} onChange={e => setManualId(e.target.value.toUpperCase())}
+                    <Input placeholder="AOG-TKT-00001" value={manualId} onChange={e => setManualId(e.target.value.toUpperCase())}
                       onKeyDown={e => e.key === "Enter" && handleManualScan()} className="pl-9 font-mono" />
                   </div>
                   <Button onClick={handleManualScan}>Scan</Button>
@@ -275,7 +296,7 @@ export function CheckInSystem() {
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <LogOut className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="AOG100-XXXXXX" value={manualCheckoutId} onChange={e => setManualCheckoutId(e.target.value.toUpperCase())}
+                    <Input placeholder="AOG-TKT-00001" value={manualCheckoutId} onChange={e => setManualCheckoutId(e.target.value.toUpperCase())}
                       onKeyDown={e => e.key === "Enter" && handleManualCheckout()} className="pl-9 font-mono" />
                   </div>
                   <Button variant="outline" onClick={handleManualCheckout} className="border-amber-300 text-amber-700 hover:bg-amber-50">Checkout</Button>
@@ -302,8 +323,11 @@ export function CheckInSystem() {
                         <div className="flex items-center gap-2 text-foreground">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <span className="font-medium">{lastResult.name}</span>
+                          <TicketTypeBadge type={lastResult.ticketType} />
                         </div>
-                        <div className="text-xs text-muted-foreground font-mono">{lastResult.registrationId}</div>
+                        <div className="text-xs text-muted-foreground font-mono">
+                          {lastResult.ticketNumber || lastResult.registrationId}
+                        </div>
                         {(lastResult.category || lastResult.venue) && (
                           <div className="text-xs text-muted-foreground capitalize">
                             {lastResult.category?.replace(/-/g, " ")}{lastResult.venue && ` · ${lastResult.venue}`}
@@ -364,8 +388,13 @@ export function CheckInSystem() {
                               : <LogOut className="h-3 w-3 text-blue-600" />}
                           </div>
                           <div>
-                            <p className="font-medium text-foreground leading-tight">{nameStr}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{ev.registration.registrationId}</p>
+                            <p className="font-medium text-foreground leading-tight flex items-center gap-1.5">
+                              {nameStr}
+                              <TicketTypeBadge type={ev.ticket?.ticketType} />
+                            </p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {ev.ticket?.ticketNumber || ev.registration.registrationId}
+                            </p>
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
@@ -403,8 +432,13 @@ export function CheckInSystem() {
                     return (
                       <div key={ev.id} className="flex items-start justify-between gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground">{nameStr}</p>
-                          <p className="text-xs text-muted-foreground font-mono">{ev.registration.registrationId}</p>
+                          <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                            {nameStr}
+                            <TicketTypeBadge type={ev.ticket?.ticketType} />
+                          </p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {ev.ticket?.ticketNumber || ev.registration.registrationId}
+                          </p>
                           <p className="text-xs text-amber-700 mt-0.5">{ev.flagReason}</p>
                           <p className="text-xs text-muted-foreground">{format(new Date(ev.timestamp), "d MMM · HH:mm")}</p>
                         </div>

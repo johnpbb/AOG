@@ -297,6 +297,7 @@ async function checkinReport(format: Format, dateFrom: Date | null) {
   const checkIns = await prisma.dailyCheckIn.findMany({
     where,
     include: {
+      ticket: { select: { ticketNumber: true, ticketType: true } },
       registration: {
         select: {
           registrationId: true,
@@ -311,29 +312,33 @@ async function checkinReport(format: Format, dateFrom: Date | null) {
     orderBy: { checkInDate: "desc" },
   });
 
-  // Group by registration
+  // Group by ticket (falling back to registration for legacy pre-cutover rows
+  // that have no ticketId)
   const map = new Map<
     string,
-    { reg: typeof checkIns[0]["registration"]; dates: string[] }
+    { ticket: typeof checkIns[0]["ticket"]; reg: typeof checkIns[0]["registration"]; dates: string[] }
   >();
 
   for (const c of checkIns) {
-    const existing = map.get(c.registrationId);
+    const key = c.ticketId ?? `reg:${c.registrationId}`;
+    const existing = map.get(key);
     if (existing) {
       existing.dates.push(c.checkInDate);
     } else {
-      map.set(c.registrationId, { reg: c.registration, dates: [c.checkInDate] });
+      map.set(key, { ticket: c.ticket, reg: c.registration, dates: [c.checkInDate] });
     }
   }
 
   const headers = [
-    "Registration ID", "Name", "Category", "Venue", "Venue City",
+    "Ticket Number", "Ticket Type", "Registration ID", "Name", "Category", "Venue", "Venue City",
     "Days Checked In", "Check-In Dates",
   ];
 
-  const rows = [...map.values()].map(({ reg, dates }) => {
+  const rows = [...map.values()].map(({ ticket, reg, dates }) => {
     const sorted = [...new Set(dates)].sort();
     return [
+      ticket?.ticketNumber ?? "",
+      ticket?.ticketType ?? "",
       reg.registrationId,
       extractName(reg.type, reg.formData, reg.email),
       reg.category,
