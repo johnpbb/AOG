@@ -58,7 +58,7 @@ export default function AdminPage() {
       <div className="flex">
         <AdminSidebar activeView={activeView} onViewChange={setActiveView} />
 
-        <main className="flex-1 p-6 md:p-8">{renderContent()}</main>
+        <main className="flex-1 min-w-0 p-6 md:p-8">{renderContent()}</main>
       </div>
     </div>
   );
