@@ -11,6 +11,7 @@ import {
   Loader2, X, Building2, ToggleLeft, ToggleRight, CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { YOUTH_AGE_RANGE, KIDS_AGE_RANGE } from "@/lib/types";
 
 interface Venue {
   id: string;
@@ -21,14 +22,27 @@ interface Venue {
   capacity: number;
   currentRegistrations: number;
   isActive: boolean;
+  audienceType: string | null;
   eventId: string | null;
   event: { id: string; name: string; slug: string } | null;
   _count: { registrations: number };
 }
 
 const emptyForm = {
-  name: "", description: "", address: "", city: "", capacity: "", isActive: true,
+  name: "", description: "", address: "", city: "", capacity: "", isActive: true, audienceType: "",
 };
+
+// Provisional model: venues are dedicated to one age group, pending final
+// client confirmation of how venue assignment should actually work.
+const AUDIENCE_TYPES = [
+  { id: "adults", name: "Adults" },
+  { id: "youth", name: `NextGen / Youth (${YOUTH_AGE_RANGE})` },
+  { id: "kids", name: `Kids (${KIDS_AGE_RANGE})` },
+];
+
+function audienceTypeName(id: string | null) {
+  return AUDIENCE_TYPES.find((c) => c.id === id)?.name ?? null;
+}
 
 export function VenueManagement() {
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -60,6 +74,7 @@ export function VenueManagement() {
       name: form.name, description: form.description || null,
       address: form.address || null, city: form.city || null,
       capacity: parseInt(form.capacity), isActive: form.isActive,
+      audienceType: form.audienceType || null,
     };
     try {
       const res = editingId
@@ -73,16 +88,35 @@ export function VenueManagement() {
 
   const handleEdit = (venue: Venue) => {
     setEditingId(venue.id);
-    setForm({ name: venue.name, description: venue.description || "", address: venue.address || "", city: venue.city || "", capacity: String(venue.capacity), isActive: venue.isActive });
+    setForm({ name: venue.name, description: venue.description || "", address: venue.address || "", city: venue.city || "", capacity: String(venue.capacity), isActive: venue.isActive, audienceType: venue.audienceType || "" });
     setShowForm(true); setError(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDeactivate = async (id: string) => {
+    setDeletingId(id);
+    const res = await fetch(`/api/venues/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: false }),
+    });
+    if (!res.ok) { const d = await res.json(); alert(d.error || "Failed to deactivate venue."); }
+    else fetchVenues();
+    setDeletingId(null);
   };
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete venue "${name}"? This cannot be undone.`)) return;
     setDeletingId(id);
     const res = await fetch(`/api/venues/${id}`, { method: "DELETE" });
-    if (!res.ok) { const d = await res.json(); alert(d.error || "Failed to delete venue."); }
+    if (!res.ok) {
+      const d = await res.json();
+      if (res.status === 409 && confirm(`${d.error}\n\nDeactivate it instead? It will stop being offered to new registrants but existing registrations are unaffected.`)) {
+        await handleDeactivate(id);
+        return;
+      }
+      alert(d.error || "Failed to delete venue.");
+    }
     else fetchVenues();
     setDeletingId(null);
   };
@@ -136,6 +170,23 @@ export function VenueManagement() {
               <div className="space-y-1.5">
                 <Label htmlFor="venue-address">Address</Label>
                 <Input id="venue-address" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="123 Victoria Parade" />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="venue-audience-type">Age Group</Label>
+                <p className="text-xs text-muted-foreground -mt-0.5 mb-1">
+                  Registrants' headcount for this age group is automatically booked into this venue. Leave unset to exclude it from automatic assignment. (Provisional — pending final confirmation of how venue assignment should work.)
+                </p>
+                <select
+                  id="venue-audience-type"
+                  value={form.audienceType}
+                  onChange={e => setForm(f => ({ ...f, audienceType: e.target.value }))}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">No age group (excluded from auto-assignment)</option>
+                  {AUDIENCE_TYPES.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -265,8 +316,27 @@ export function VenueManagement() {
                       {venue.event ? <span className="truncate font-medium">{venue.event.name}</span> : <span>Not assigned to any event</span>}
                     </div>
 
+                    {/* Age-group badge — drives automatic venue assignment */}
+                    <div className={cn("flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-md", audienceTypeName(venue.audienceType) ? "bg-purple-50 text-purple-700" : "bg-amber-50 text-amber-700")}>
+                      <Building2 className="h-3.5 w-3.5 shrink-0" />
+                      {audienceTypeName(venue.audienceType)
+                        ? <span className="truncate font-medium">{audienceTypeName(venue.audienceType)}</span>
+                        : <span>No age group — excluded from auto-assignment</span>}
+                    </div>
+
                     {near && !full && <div className="flex items-center gap-2 text-yellow-600 text-sm bg-yellow-50 p-2 rounded-lg"><AlertTriangle className="h-4 w-4" /> Approaching capacity</div>}
                     {full && <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-2 rounded-lg"><AlertTriangle className="h-4 w-4" /> Venue at capacity</div>}
+
+                    {venue._count.registrations > 0 && venue.isActive && (
+                      <Button
+                        variant="outline" size="sm" className="w-full gap-2"
+                        onClick={() => handleDeactivate(venue.id)}
+                        disabled={deletingId === venue.id}
+                      >
+                        {deletingId === venue.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ToggleLeft className="h-3.5 w-3.5" />}
+                        Deactivate
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

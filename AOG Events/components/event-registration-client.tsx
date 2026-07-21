@@ -68,16 +68,30 @@ export function EventRegistrationClient({ event }: Props) {
     return [];
   })();
 
-  const handleCategorySelect = (category: CategoryInfo) => setSelectedCategory(category);
+  const handleCategorySelect = (category: CategoryInfo) => {
+    setSelectedCategory(category);
+    setStep("form");
+  };
 
   const handleEntryContinue = () => {
     if (!path) return;
     if ((path === "church" || path === "wfc") && !selectedChurch) return;
-    setStep("category");
-  };
 
-  const handleCategoryContinue = () => {
-    if (selectedCategory) setStep("form");
+    // If we know the church's HQ-reported size, skip straight to the form
+    // instead of making them click through a category step for a choice
+    // that's already made — they can still change it via "Back to
+    // Categories" on the form if it's wrong.
+    const knownCategory = selectedChurch?.category
+      ? categoriesForPath.find((c) => c.id === selectedChurch.category)
+      : undefined;
+
+    if (knownCategory) {
+      setSelectedCategory(knownCategory);
+      setStep("form");
+    } else {
+      setSelectedCategory(null);
+      setStep("category");
+    }
   };
 
   const handleFormSubmit = (data: any) => {
@@ -232,6 +246,12 @@ export function EventRegistrationClient({ event }: Props) {
             <p className="mt-2 text-muted-foreground max-w-xl mx-auto">
               Choose the category that matches your registration.
             </p>
+            {selectedCategory && selectedChurch?.category === selectedCategory.id && (
+              <p className="mt-1 text-xs text-muted-foreground max-w-xl mx-auto">
+                We've pre-selected {selectedCategory.name} based on our records for {selectedChurch.name} —
+                change it below if that's not right.
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -244,14 +264,6 @@ export function EventRegistrationClient({ event }: Props) {
               />
             ))}
           </div>
-
-          {selectedCategory && (
-            <div className="pt-4">
-              <Button onClick={handleCategoryContinue} className="w-full bg-brand-orange text-brand-white hover:bg-brand-orange/90" size="lg">
-                Continue with {selectedCategory.name}
-              </Button>
-            </div>
-          )}
         </div>
       )}
 
@@ -271,7 +283,6 @@ export function EventRegistrationClient({ event }: Props) {
                 onCancel={handleCancel}
                 onSubmit={handleFormSubmit}
                 eventId={event.id}
-                venues={event.venues}
               />
             ) : (
               <IndividualRegistrationForm
@@ -280,7 +291,6 @@ export function EventRegistrationClient({ event }: Props) {
                 onCancel={handleCancel}
                 onSubmit={handleFormSubmit}
                 eventId={event.id}
-                venues={event.venues}
               />
             )}
           </div>

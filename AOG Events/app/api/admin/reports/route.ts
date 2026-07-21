@@ -113,6 +113,7 @@ async function registrationsReport(
     include: {
       event: { select: { name: true } },
       venue: { select: { name: true, city: true } },
+      venueAllocations: { include: { venue: { select: { name: true } } } },
       tickets: { select: { ticketNumber: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -120,7 +121,7 @@ async function registrationsReport(
 
   const headers = [
     "Registration ID", "Church ID", "Type", "Category", "Name", "Email", "Phone",
-    "Adults", "Youth", "Kids", "Event", "Venue", "Venue City", "Tickets", "Ticket Numbers",
+    "Adults", "Youth", "Kids", "Event", "Venue", "Tickets", "Ticket Numbers",
     "Payment Method", "Payment Status", "Payment Type", "Installments", "Fee (FJD)", "Registered At",
   ];
 
@@ -136,8 +137,9 @@ async function registrationsReport(
     r.youth,
     r.kids,
     r.event?.name ?? "",
-    r.venue?.name ?? "",
-    r.venue?.city ?? "",
+    r.venueAllocations.length > 0
+      ? r.venueAllocations.map((a) => `${a.venue.name} (${a.count} ${a.audienceType})`).join("; ")
+      : r.venue?.name ?? "",
     r.tickets.length,
     r.tickets.map((t) => t.ticketNumber).join(", "),
     r.paymentMethod,

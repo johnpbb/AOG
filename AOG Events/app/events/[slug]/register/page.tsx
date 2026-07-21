@@ -84,7 +84,17 @@ export default async function EventRegisterPage({ params }: Props) {
             </h1>
           </div>
 
-          <EventRegistrationClient event={serializedEvent} />
+          {/*
+            The form components below (Input, Label, CategoryCard, Card, etc.) are
+            styled with shadcn's light-theme CSS variables. This page's background is
+            always dark, so without a `dark` ancestor those variables resolve to their
+            light-mode values and produce invisible/near-invisible text (dark-on-black
+            or white-on-white). Wrapping in `dark` flips every nested theme variable to
+            its dark-mode pairing without touching this page's own brand-black chrome.
+          */}
+          <div className="dark">
+            <EventRegistrationClient event={serializedEvent} />
+          </div>
         </div>
       </main>
 

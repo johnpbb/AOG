@@ -10,6 +10,7 @@ export interface ChurchOption {
   name: string;
   district: string | null;
   country: string;
+  category: string | null;
 }
 
 interface ChurchAutocompleteProps {

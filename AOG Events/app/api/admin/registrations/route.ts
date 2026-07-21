@@ -7,6 +7,7 @@ export async function GET() {
       include: {
         attendees: true,
         venue: { select: { id: true, name: true } },
+        venueAllocations: { include: { venue: { select: { id: true, name: true } } } },
         tickets: { select: { id: true, ticketNumber: true, status: true } },
       },
       orderBy: {

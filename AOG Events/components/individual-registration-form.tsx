@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { CategoryInfo } from "@/lib/types";
-import { VenueSelector } from "./venue-selector";
 import { PaymentTypeSelector } from "./payment-type-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,21 +11,12 @@ import { cn } from "@/lib/utils";
 import { loadAnzScript, initAnzPayment } from "@/lib/anz-egate-client";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 
-interface Venue {
-  id: string;
-  name: string;
-  city?: string | null;
-  capacity: number;
-  currentRegistrations: number;
-}
-
 interface IndividualRegistrationFormProps {
   category: CategoryInfo;
   onBack: () => void;
   onCancel: () => void;
   onSubmit: (data: unknown) => void;
   eventId?: string;
-  venues?: Venue[];
   stepperMax?: number;
 }
 
@@ -36,7 +26,6 @@ export function IndividualRegistrationForm({
   onCancel,
   onSubmit,
   eventId,
-  venues = [],
   stepperMax,
 }: IndividualRegistrationFormProps) {
   const [step, setStep] = useState(1);
@@ -53,7 +42,6 @@ export function IndividualRegistrationForm({
     email: "",
     phone: "",
     church: "",
-    venue: "",
     paymentMethod: "" as "online" | "bank-transfer" | "",
   });
   const [numberOfTickets, setNumberOfTickets] = useState(1);
@@ -70,7 +58,6 @@ export function IndividualRegistrationForm({
   const totalFee = category.fee * numberOfTickets;
 
   const isStep1Valid = formData.firstName && formData.lastName && formData.email && formData.phone;
-  const isStep2Valid = formData.venue !== "";
 
   const handleSubmit = async () => {
     setIsProcessing(true);
@@ -135,7 +122,7 @@ export function IndividualRegistrationForm({
 
   const steps = [
     { number: 1, title: "Your Details", icon: User },
-    { number: 2, title: "Venue & Payment", icon: CreditCard },
+    { number: 2, title: "Payment", icon: CreditCard },
   ];
 
   return (
@@ -253,21 +240,18 @@ export function IndividualRegistrationForm({
               <Button variant="outline" onClick={onBack}>Back</Button>
               <Button variant="ghost" onClick={onCancel}>Cancel</Button>
             </div>
-            <Button onClick={() => setStep(2)} disabled={!isStep1Valid}>Continue to Venue</Button>
+            <Button onClick={() => setStep(2)} disabled={!isStep1Valid}>Continue to Payment</Button>
           </div>
         </div>
       )}
 
-      {/* Step 2: Venue & Payment */}
+      {/* Step 2: Payment */}
       {step === 2 && (
         <div className="space-y-6">
           <div className="text-center">
-            <h2 className="text-2xl font-semibold text-foreground">Venue & Payment</h2>
-            <p className="text-muted-foreground mt-1">Select your venue and payment method</p>
+            <h2 className="text-2xl font-semibold text-foreground">Payment</h2>
+            <p className="text-muted-foreground mt-1">Select your payment method</p>
           </div>
-
-          <VenueSelector selectedVenue={formData.venue}
-            onSelect={(venueId) => updateFormData("venue", venueId)} venues={venues} />
 
           <div className="space-y-3">
             <FieldLabel>Payment Method</FieldLabel>
@@ -305,11 +289,11 @@ export function IndividualRegistrationForm({
             <h3 className="font-medium text-foreground">Registration Summary</h3>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Name</span>
-              <span>{formData.firstName} {formData.lastName}</span>
+              <span className="text-foreground">{formData.firstName} {formData.lastName}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Tickets</span>
-              <span>{numberOfTickets} × ${category.fee} FJD</span>
+              <span className="text-foreground">{numberOfTickets} × ${category.fee} FJD</span>
             </div>
             <div className="flex justify-between border-t border-border/50 pt-2 font-semibold">
               <span>Total Fee</span>
@@ -326,7 +310,7 @@ export function IndividualRegistrationForm({
               <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
               <Button variant="ghost" onClick={onCancel}>Cancel</Button>
             </div>
-            <Button onClick={handleSubmit} disabled={!isStep2Valid || !formData.paymentMethod || !turnstileToken || isProcessing}>
+            <Button onClick={handleSubmit} disabled={!formData.paymentMethod || !turnstileToken || isProcessing}>
               {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : "Complete Registration"}
             </Button>
           </div>

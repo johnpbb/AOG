@@ -73,6 +73,11 @@ model Church {
   district String?
   country  String  @default("Fiji") // Fiji | Australia | New Zealand | USA | United Kingdom
   isActive Boolean @default(true)
+  // HQ-reported size (SMALL | MEDIUM | LARGE | VERY LARGE), from the General
+  // Secretary's membership list. Used only to pre-fill the category step at
+  // registration — never enforced, since this data is sometimes inaccurate
+  // and the registrant can always pick a different category manually.
+  category String?
 
   registrations Registration[]
 
@@ -169,11 +174,19 @@ model Venue {
   city        String?
   capacity    Int
   isActive    Boolean @default(true)
+  // Attendee age group this venue is dedicated to: "adults" | "youth" | "kids".
+  // Drives automatic venue assignment at registration time — a venue with no
+  // audienceType set is never auto-assigned. Null until an admin sets it.
+  // NOTE: this replaces an earlier "one venue per church-size category" design
+  // that didn't match how this event's venues are actually organized — pending
+  // final client confirmation, per project notes.
+  audienceType String?
 
   eventId String?
   event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
   registrations Registration[]
+  allocations   VenueAllocation[]
 
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -213,8 +226,12 @@ model Registration {
   // Event & Venue
   eventId String
   event   Event  @relation(fields: [eventId], references: [id])
-  venueId String
-  venue   Venue  @relation(fields: [venueId], references: [id])
+  // Nullable: a registration's adults/youth/kids now split across separate
+  // venues (see VenueAllocation) rather than booking into one single venue.
+  // Kept for backwards compat with any legacy single-venue registrations.
+  venueId String?
+  venue   Venue?  @relation(fields: [venueId], references: [id])
+  venueAllocations VenueAllocation[]
 
   // Payment
   fee              Float
@@ -243,6 +260,25 @@ model Registration {
   @@index([eventId])
   @@index([venueId])
   @@index([churchId])
+}
+
+// Records how a registration's headcount was split across venues by age
+// group (one row per adults/youth/kids bucket that had a matching venue).
+// This is what actually drives Venue.currentRegistrations now — Registration
+// no longer books into a single venue.
+model VenueAllocation {
+  id             String       @id @default(cuid())
+  registrationId String
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  venueId        String
+  venue          Venue        @relation(fields: [venueId], references: [id])
+  audienceType   String // "adults" | "youth" | "kids"
+  count          Int
+
+  createdAt DateTime @default(now())
+
+  @@unique([registrationId, audienceType])
+  @@index([venueId])
 }
 
 // One row per attendee per event day — enables daily refresh of check-ins

@@ -35,7 +35,7 @@ export async function PUT(
   const { id } = await params;
   try {
     const body = await req.json();
-    const { name, description, address, city, capacity, isActive, eventId } = body;
+    const { name, description, address, city, capacity, isActive, eventId, audienceType } = body;
 
     const venue = await prisma.venue.update({
       where: { id },
@@ -46,6 +46,8 @@ export async function PUT(
         ...(city !== undefined && { city }),
         ...(capacity !== undefined && { capacity: parseInt(capacity) }),
         ...(isActive !== undefined && { isActive }),
+        // audienceType can be set to a string (assign) or null (unassign)
+        ...("audienceType" in body && { audienceType: audienceType || null }),
         // eventId can be set to a string (assign) or null (unassign)
         ...("eventId" in body && { eventId: eventId ?? null }),
       },
@@ -69,6 +71,16 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
+    const registrationCount = await prisma.registration.count({ where: { venueId: id } });
+    if (registrationCount > 0) {
+      return NextResponse.json(
+        {
+          error: `This venue has ${registrationCount} linked registration${registrationCount === 1 ? "" : "s"} and can't be deleted. Deactivate it instead.`,
+        },
+        { status: 409 }
+      );
+    }
+
     await prisma.venue.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error: any) {

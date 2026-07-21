@@ -160,6 +160,11 @@ function PendingScreen({
         <Button onClick={onNewRegistration} variant="outline">
           Register Another Church
         </Button>
+        <div className="flex items-center justify-center gap-4 text-sm">
+          <Link href="/manage-registration" className="text-muted-foreground hover:text-foreground transition-colors">
+            Need to change something? Manage your registration
+          </Link>
+        </div>
         <div>
           <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Return to Home
@@ -227,6 +232,11 @@ function CompletedScreen({
 
       <div className="pt-6 space-y-3">
         <Button onClick={onNewRegistration} variant="outline">Register Another Person</Button>
+        <div className="flex items-center justify-center gap-4 text-sm">
+          <Link href="/manage-registration" className="text-muted-foreground hover:text-foreground transition-colors">
+            Need to change something? Manage your registration
+          </Link>
+        </div>
         <div>
           <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Return to Home

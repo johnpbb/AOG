@@ -132,7 +132,7 @@ export const KIDS_AGE_RANGE = "6–12";
 // Absolute final date for all installment payments (per client spec).
 export const INSTALLMENT_DEADLINE = new Date("2026-09-30T23:59:59+12:00");
 
-export const INSTALLMENT_OPTIONS = [5, 6, 7, 8, 9, 10];
+export const INSTALLMENT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 export interface GlossaryTerm {
   term: string;

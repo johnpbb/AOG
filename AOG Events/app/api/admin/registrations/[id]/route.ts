@@ -6,6 +6,7 @@ import { generateTicketsForRegistration } from "@/lib/tickets";
 import { getCurrentUser } from "@/lib/auth";
 import { format } from "date-fns";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
+import { releaseVenueAllocations } from "@/lib/venue-assignment";
 
 // PATCH /api/admin/registrations/[id] — one-click approve for a pending bank
 // transfer registration. Internally logs a FULL Payment row (rather than
@@ -139,7 +140,10 @@ export async function DELETE(
         data: { status: TicketStatus.CANCELLED },
       });
 
-      // 4. Return seats to venue counter
+      // 4. Return seats to whichever venues this registration's headcount was
+      // split across (see lib/venue-assignment.ts), plus the legacy
+      // single-venue path for any pre-existing registration still using it.
+      await releaseVenueAllocations(tx, id);
       if (registration.venueId && activeTicketCount > 0) {
         await tx.venue.update({
           where: { id: registration.venueId },

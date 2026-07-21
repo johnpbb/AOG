@@ -1,47 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { REGISTRATION_CATEGORIES, INSTALLMENT_DEADLINE } from "@/lib/types";
 import {
   sendPendingRegistrationEmail,
   sendAdminNotificationEmail,
 } from "@/lib/email";
-
-async function verifyTurnstileToken(token: string | undefined, ip: string | null): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return true; // widget not configured — skip verification
-  if (!token) return false;
-
-  const body = new URLSearchParams({ secret, response: token });
-  if (ip) body.set("remoteip", ip);
-
-  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  const result = await res.json();
-  return result.success === true;
-}
-
-// Builds the spec's reference number: AG100-{3-digit churchId}{categoryCode}{total}.
-// Non-church registrations (no real Church match) use "000" as the church-ID block.
-// If the exact combination already exists (e.g. same church re-registers at the
-// same headcount), a numeric suffix is appended to keep the ID unique.
-async function generateRegistrationId(
-  tx: any,
-  churchId: string | null,
-  categoryCode: string,
-  total: number
-): Promise<string> {
-  const base = `AG100-${churchId ?? "000"}${categoryCode}${total}`;
-  let candidate = base;
-  let suffix = 2;
-  while (await tx.registration.findUnique({ where: { registrationId: candidate } })) {
-    candidate = `${base}-${suffix}`;
-    suffix += 1;
-  }
-  return candidate;
-}
+import { verifyTurnstileToken } from "@/lib/turnstile";
+import { createRegistrationRecord, RegistrationCapacityError } from "@/lib/create-registration";
 
 export async function POST(request: Request) {
   try {
@@ -57,7 +21,6 @@ export async function POST(request: Request) {
       contactPreference,
       contactPhone,
       contactEmail,
-      venue,
       eventId,
       paymentMethod,
       fee,
@@ -82,111 +45,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "eventId is required" }, { status: 400 });
     }
 
-    if (!venue) {
-      return NextResponse.json({ error: "venue (venueId) is required" }, { status: 400 });
-    }
-
-    const isChurchPath = (type || "").toLowerCase() === "church";
-    const numAdults = isChurchPath ? Math.max(0, parseInt(String(adults), 10) || 0) : 0;
-    const numYouth = isChurchPath ? Math.max(0, parseInt(String(youth), 10) || 0) : 0;
-    const numKids = isChurchPath ? Math.max(0, parseInt(String(kids), 10) || 0) : 0;
-    const qty = isChurchPath
-      ? numAdults + numYouth + numKids
-      : Math.max(1, parseInt(String(numberOfTickets), 10) || 1);
-    // Kids don't receive a ticket/QR code — only adults and youth do.
-    const ticketQty = isChurchPath ? numAdults + numYouth : qty;
-    const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === category);
-
-    const result = await prisma.$transaction(async (tx) => {
-      if (catInfo?.registrationLimit !== null && catInfo?.registrationLimit !== undefined) {
-        const regCount = await tx.registration.count({
-          where: { category, paymentStatus: "COMPLETED" },
-        });
-        if (regCount >= catInfo.registrationLimit) {
-          throw new Error(
-            `LIMIT_REACHED: All ${catInfo.registrationLimit} registrations for ${catInfo.name} have been received.`
-          );
-        }
-      }
-
-      if (catInfo) {
-        // Seats are reserved against the pool the moment a registration is
-        // submitted (even while payment is pending) — entry QR tickets
-        // themselves aren't generated until the registration is fully paid
-        // (see lib/tickets.ts), so we can't count Ticket rows here.
-        const activeRegs = await tx.registration.findMany({
-          where: { category, paymentStatus: { not: "CANCELLED" } },
-          select: { type: true, adults: true, youth: true, numberOfAttendees: true },
-        });
-        const reservedSeats = activeRegs.reduce(
-          (sum: number, r: any) => sum + (r.type === "CHURCH" ? r.adults + r.youth : r.numberOfAttendees),
-          0
-        );
-        const remaining = catInfo.ticketPool - reservedSeats;
-        if (ticketQty > remaining) {
-          throw new Error(
-            `POOL_EXCEEDED: Only ${remaining} seats remain in the ${catInfo.name} pool. You requested ${ticketQty}.`
-          );
-        }
-      }
-
-      const registrationId = await generateRegistrationId(
-        tx,
-        churchId || null,
-        catInfo?.categoryCode ?? "XX",
-        qty
-      );
-
-      const registration = await tx.registration.create({
-        data: {
-          registrationId,
-          category: category || "unknown",
-          type: (type || "individual").toUpperCase() as any,
-          churchId: churchId || null,
-          email: email || "unknown",
-          phone: phone || null,
-          registrarName: registrarName || null,
-          contactPreference: contactPreference || null,
-          contactPhone: contactPhone || null,
-          contactEmail: contactEmail || null,
-          eventId,
-          venueId: venue,
-          fee: parseFloat(String(fee)) || 0,
-          paymentMethod: paymentMethod === "online" ? "ONLINE" : "BANK_TRANSFER",
-          paymentStatus: "PENDING",
-          formData: rest || {},
-          numberOfAttendees: qty,
-          adults: numAdults,
-          youth: numYouth,
-          kids: numKids,
-          paymentType: paymentType === "partial" ? "partial" : "full",
-          installmentCount: paymentType === "partial" ? parseInt(String(installmentCount), 10) || null : null,
-          installmentDeadline: paymentType === "partial" ? INSTALLMENT_DEADLINE : null,
-          ...(Array.isArray(attendees) && attendees.length > 0
-            ? {
-                attendees: {
-                  create: attendees.map((a: any) => ({
-                    firstName: a.firstName,
-                    lastName: a.lastName,
-                    email: a.email || null,
-                    phone: a.phone || null,
-                  })),
-                },
-              }
-            : {}),
-        },
-      });
-
-      await tx.venue.update({
-        where: { id: venue },
-        data: { currentRegistrations: { increment: ticketQty } },
-      });
-
-      // Entry QR tickets are issued only once the registration is fully paid
-      // (see lib/tickets.ts) — via admin approval, the finance ledger, or the
-      // online-payment verification callback. None exist yet at submission time.
-      return { registration, tickets: [] as { id: string; ticketNumber: string }[] };
-    });
+    const result = await prisma.$transaction((tx) =>
+      createRegistrationRecord(tx, {
+        category,
+        type,
+        email: email || "unknown",
+        phone,
+        churchId,
+        registrarName,
+        contactPreference,
+        contactPhone,
+        contactEmail,
+        eventId,
+        paymentMethod,
+        fee: parseFloat(String(fee)) || 0,
+        numberOfTickets: Math.max(1, parseInt(String(numberOfTickets), 10) || 1),
+        adults: Math.max(0, parseInt(String(adults), 10) || 0),
+        youth: Math.max(0, parseInt(String(youth), 10) || 0),
+        kids: Math.max(0, parseInt(String(kids), 10) || 0),
+        paymentType,
+        installmentCount: parseInt(String(installmentCount), 10) || undefined,
+        attendees,
+        formData: rest || {},
+      })
+    );
 
     // ── Send emails for bank transfer registrations ────────────────────────
     if (paymentMethod !== "online" && email && email !== "unknown") {
@@ -205,8 +87,8 @@ export async function POST(request: Request) {
       const emailParams = {
         registrantName: String(registrantName),
         registrationId: result.registration.registrationId,
-        category: catInfo?.name ?? category,
-        numberOfTickets: qty,
+        category: result.catInfo?.name ?? category,
+        numberOfTickets: result.qty,
         fee: result.registration.fee,
         bankName: siteConfig?.bankName ?? "",
         bankAccountName: siteConfig?.bankAccountName ?? "",
@@ -235,18 +117,21 @@ export async function POST(request: Request) {
       ]);
     }
 
+    if (result.venueWarnings.length > 0) {
+      console.warn(`Venue assignment gaps for ${result.registration.registrationId}:`, result.venueWarnings);
+    }
+
     return NextResponse.json({
       success: true,
       id: result.registration.id,
       registrationId: result.registration.registrationId,
-      tickets: result.tickets.map((t) => ({ id: t.id, ticketNumber: t.ticketNumber })),
+      tickets: [] as { id: string; ticketNumber: string }[],
     });
   } catch (error: any) {
     console.error("Registration Error:", error);
 
-    if (error.message?.startsWith("LIMIT_REACHED:") || error.message?.startsWith("POOL_EXCEEDED:")) {
-      const userMessage = error.message.replace(/^[A-Z_]+: /, "");
-      return NextResponse.json({ error: userMessage }, { status: 409 });
+    if (error instanceof RegistrationCapacityError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
     }
 
     return NextResponse.json(

@@ -14,6 +14,16 @@ export async function GET(request: Request) {
   }
 
   try {
+    // Idempotency guard: a page refresh on the verify page would otherwise
+    // re-hit the ANZ API and re-send the confirmation email every time.
+    const existing = await prisma.registration.findUnique({ where: { registrationId: regId } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Registration not found' }, { status: 404 });
+    }
+    if (existing.paymentStatus === 'COMPLETED') {
+      return NextResponse.json({ status: 'success', message: 'Payment already confirmed' });
+    }
+
     const merchantId = process.env.NEXT_PUBLIC_ANZ_MERCHANT_ID;
     const password = process.env.ANZ_API_PASSWORD;
     const gatewayUrl = process.env.NEXT_PUBLIC_ANZ_GATEWAY_URL; // Using client-side URL or env
@@ -39,8 +49,17 @@ export async function GET(request: Request) {
     clearTimeout(timeoutId);
 
     const data = await response.json();
-    
-    const isSuccess = data.result === 'SUCCESS' || data.status === 'CAPTURED';
+
+    const gatewaySuccess = data.result === 'SUCCESS' || data.status === 'CAPTURED';
+    const paidAmount = Number(data.order?.amount ?? data.amount ?? NaN);
+    const amountMatches = !Number.isNaN(paidAmount) && Math.abs(paidAmount - existing.fee) < 0.01;
+    const isSuccess = gatewaySuccess && amountMatches;
+
+    if (gatewaySuccess && !amountMatches) {
+      console.error(
+        `ANZ amount mismatch for ${regId}: gateway reported ${paidAmount}, expected ${existing.fee}`
+      );
+    }
 
     if (isSuccess) {
       // Update database status

@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, description, address, city, capacity, eventId, isActive } = body;
+    const { name, description, address, city, capacity, eventId, isActive, audienceType } = body;
 
     if (!name || !capacity) {
       return NextResponse.json({ error: "Name and capacity are required" }, { status: 400 });
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
         city: city || null,
         capacity: parseInt(capacity),
         isActive: isActive !== undefined ? isActive : true,
+        audienceType: audienceType || null,
         // Only include eventId if provided — Prisma rejects explicit null on create for relations
         ...(eventId ? { eventId } : {}),
       },

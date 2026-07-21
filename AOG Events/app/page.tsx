@@ -25,6 +25,7 @@ async function getPublishedEvents() {
 
 export default async function HomePage() {
   const events = await getPublishedEvents();
+  const primaryEventHref = events.length === 1 ? `/events/${events[0].slug}` : "/events";
 
   return (
     <div className="bg-brand-black text-brand-white overflow-x-hidden">
@@ -33,7 +34,7 @@ export default async function HomePage() {
       <nav className="brand-nav fixed">
         <div className="max-w-[1280px] mx-auto px-6 flex items-center justify-between h-[68px]">
           <Image src="/logos/agfj100-light.png" alt="AGFJ100" width={160} height={48} className="object-contain" priority />
-          <Link href="/events" className="inline-flex items-center gap-2 bg-brand-orange text-brand-white px-[22px] py-[10px] rounded-lg font-bold text-sm no-underline tracking-[0.03em]">
+          <Link href={primaryEventHref} className="inline-flex items-center gap-2 bg-brand-orange text-brand-white px-[22px] py-[10px] rounded-lg font-bold text-sm no-underline tracking-[0.03em]">
             Register Now <ArrowRight size={15} />
           </Link>
         </div>
@@ -63,7 +64,7 @@ export default async function HomePage() {
             Join us in celebrating 100 years of Spirit-led mission across the Pacific islands
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <Link href="/events" className="inline-flex items-center gap-[10px] bg-brand-orange text-brand-white px-10 py-[15px] rounded-lg font-bold text-[15px] no-underline tracking-[0.04em]">
+            <Link href={primaryEventHref} className="inline-flex items-center gap-[10px] bg-brand-orange text-brand-white px-10 py-[15px] rounded-lg font-bold text-[15px] no-underline tracking-[0.04em]">
               View Events <ArrowRight size={17} />
             </Link>
             <a href="#about" className="inline-flex items-center gap-[10px] bg-transparent text-white/80 px-10 py-[15px] rounded-lg font-semibold text-[15px] no-underline border border-white/18">

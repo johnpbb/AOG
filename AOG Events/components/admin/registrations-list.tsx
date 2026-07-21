@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Filter, Eye, MoreHorizontal, Download, Loader2, XCircle, CheckCircle } from "lucide-react";
+import { Search, Filter, Eye, MoreHorizontal, Download, Upload, Loader2, XCircle, CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
+import { RegistrationsCsvImporter } from "./registrations-csv-importer";
 
 export function RegistrationsList() {
   const [registrations, setRegistrations] = useState<any[]>([]);
@@ -37,14 +38,19 @@ export function RegistrationsList() {
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [showImporter, setShowImporter] = useState(false);
 
   useEffect(() => {
     fetchRegistrations();
   }, []);
 
-  const fetchRegistrations = async () => {
+  // `silent` skips the loading-spinner branch below, which otherwise
+  // unmounts this component's children (e.g. the CSV importer panel) on
+  // every background refresh, wiping their state. Used when refreshing after
+  // an action within an already-open panel rather than the initial load.
+  const fetchRegistrations = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await fetch('/api/admin/registrations');
       if (res.ok) {
         const data = await res.json();
@@ -53,7 +59,7 @@ export function RegistrationsList() {
     } catch (error) {
       console.error("Error fetching registrations:", error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -78,8 +84,8 @@ export function RegistrationsList() {
 
   const handleCancel = async (reg: any) => {
     const confirmed = window.confirm(
-      `Cancel registration ${reg.registrationId} for ${reg.venue?.name ?? "this venue"}?\n\n` +
-      `This will:\n• Mark the registration as Cancelled\n• Invalidate ${reg.tickets?.length ?? reg.numberOfAttendees} QR ticket(s)\n• Return seats to the venue pool\n\nThis cannot be undone.`
+      `Cancel registration ${reg.registrationId}?\n\n` +
+      `This will:\n• Mark the registration as Cancelled\n• Invalidate ${reg.tickets?.length ?? reg.numberOfAttendees} QR ticket(s)\n• Return seats to the venue pool(s)\n\nThis cannot be undone.`
     );
     if (!confirmed) return;
 
@@ -136,11 +142,24 @@ export function RegistrationsList() {
             Manage and view all event registrations.
           </p>
         </div>
-        <Button variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />
-          Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setShowImporter((v) => !v)}>
+            <Upload className="h-4 w-4" />
+            Import CSV
+          </Button>
+          <Button variant="outline" className="gap-2">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
       </div>
+
+      {showImporter && (
+        <RegistrationsCsvImporter
+          onImported={() => { fetchRegistrations(true); }}
+          onClose={() => setShowImporter(false)}
+        />
+      )}
 
       {/* Filters */}
       <Card>
@@ -234,7 +253,17 @@ export function RegistrationsList() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{reg.venue?.name ?? reg.venueId}</span>
+                        {reg.venueAllocations?.length > 0 ? (
+                          <span className="text-sm">
+                            {reg.venueAllocations
+                              .map((a: any) => `${a.venue.name} (${a.count} ${a.audienceType})`)
+                              .join(", ")}
+                          </span>
+                        ) : reg.venue?.name ? (
+                          <span className="text-sm">{reg.venue.name}</span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

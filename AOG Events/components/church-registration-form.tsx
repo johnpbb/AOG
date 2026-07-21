@@ -2,23 +2,15 @@
 
 import { useState } from "react";
 import { CategoryInfo, YOUTH_AGE_RANGE, KIDS_AGE_RANGE } from "@/lib/types";
-import { VenueSelector } from "./venue-selector";
 import { ChurchOption } from "./church-autocomplete";
 import { PaymentTypeSelector } from "./payment-type-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
-import { Building, MapPin, Loader2 } from "lucide-react";
+import { Building, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TurnstileWidget } from "@/components/turnstile-widget";
-
-interface Venue {
-  id: string;
-  name: string;
-  city?: string | null;
-  capacity: number;
-  currentRegistrations: number;
-}
+import { AttendeeCountStepper } from "@/components/attendee-count-stepper";
 
 interface ChurchRegistrationFormProps {
   category: CategoryInfo;
@@ -27,7 +19,6 @@ interface ChurchRegistrationFormProps {
   onCancel: () => void;
   onSubmit: (data: unknown) => void;
   eventId?: string;
-  venues?: Venue[];
   stepperMax?: number;
 }
 
@@ -38,10 +29,8 @@ export function ChurchRegistrationForm({
   onCancel,
   onSubmit,
   eventId,
-  venues = [],
   stepperMax,
 }: ChurchRegistrationFormProps) {
-  const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +46,6 @@ export function ChurchRegistrationForm({
     churchEmail: "",
     personalPhone: "",
     personalEmail: "",
-    venue: "",
   });
   const [adults, setAdults] = useState(0);
   const [youth, setYouth] = useState(0);
@@ -73,7 +61,7 @@ export function ChurchRegistrationForm({
   const contactPhone = formData.contactPreference === "church" ? formData.churchPhone : formData.personalPhone;
   const contactEmail = formData.contactPreference === "church" ? formData.churchEmail : formData.personalEmail;
 
-  const isStep1Valid =
+  const isFormValid =
     !!church &&
     formData.registrarName &&
     formData.pastorName &&
@@ -82,8 +70,6 @@ export function ChurchRegistrationForm({
     total > 0;
 
   const overAttendeeLimit = total > maxTickets;
-
-  const isStep2Valid = formData.venue !== "";
 
   const handleSubmit = async () => {
     setIsProcessing(true);
@@ -114,7 +100,6 @@ export function ChurchRegistrationForm({
           paymentType,
           installmentCount: paymentType === "partial" ? installmentCount : null,
           eventId,
-          venue: formData.venue,
           turnstileToken,
         }),
       });
@@ -141,37 +126,8 @@ export function ChurchRegistrationForm({
     }
   };
 
-  const steps = [
-    { number: 1, title: "Church Details", icon: Building },
-    { number: 2, title: "Venue Selection", icon: MapPin },
-  ];
-
   return (
     <div className="space-y-8">
-      {/* Progress */}
-      <div className="flex items-center justify-center gap-2">
-        {steps.map((s, index) => (
-          <div key={s.number} className="flex items-center">
-            <button
-              onClick={() => setStep(s.number)}
-              disabled={s.number === 2 && !isStep1Valid}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
-                step === s.number ? "bg-primary text-primary-foreground"
-                  : step > s.number ? "bg-green-100 text-green-700"
-                    : "bg-secondary text-muted-foreground"
-              )}
-            >
-              <s.icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{s.title}</span>
-            </button>
-            {index < steps.length - 1 && (
-              <div className={cn("w-8 h-0.5 mx-2", step > s.number ? "bg-green-500" : "bg-border")} />
-            )}
-          </div>
-        ))}
-      </div>
-
       {/* Error banner */}
       {error && (
         <div role="alert" className="p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
@@ -179,13 +135,11 @@ export function ChurchRegistrationForm({
         </div>
       )}
 
-      {/* Step 1: Church Details + Attendance Breakdown */}
-      {step === 1 && (
-        <div className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-semibold text-foreground">Church Details</h2>
-            <p className="text-muted-foreground mt-1">Enter your church information for {category.name}</p>
-          </div>
+      <div className="space-y-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-foreground">Church Details</h2>
+          <p className="text-muted-foreground mt-1">Enter your church information for {category.name}</p>
+        </div>
 
           <Field>
             <FieldLabel>Church</FieldLabel>
@@ -220,6 +174,10 @@ export function ChurchRegistrationForm({
           {/* Contact preference toggle */}
           <div className="space-y-3">
             <FieldLabel>Contact Details</FieldLabel>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Choose whether the confirmation email and QR code should go to the church&apos;s
+              general contact, or to you personally.
+            </p>
             <div className="grid gap-3 md:grid-cols-2">
               {(["church", "personal"] as const).map((pref) => (
                 <button key={pref} type="button" onClick={() => updateFormData("contactPreference", pref)}
@@ -257,21 +215,14 @@ export function ChurchRegistrationForm({
               </p>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
-              <Field>
-                <FieldLabel htmlFor="adults">Adults</FieldLabel>
-                <Input id="adults" type="number" min={0} value={adults}
-                  onChange={(e) => setAdults(Math.max(0, parseInt(e.target.value, 10) || 0))} />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="youth">NextGen / Youth ({YOUTH_AGE_RANGE})</FieldLabel>
-                <Input id="youth" type="number" min={0} value={youth}
-                  onChange={(e) => setYouth(Math.max(0, parseInt(e.target.value, 10) || 0))} />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="kids">Kids ({KIDS_AGE_RANGE})</FieldLabel>
-                <Input id="kids" type="number" min={0} value={kids}
-                  onChange={(e) => setKids(Math.max(0, parseInt(e.target.value, 10) || 0))} />
-              </Field>
+              <AttendeeCountStepper id="adults" label="Adults" value={adults} onChange={setAdults} />
+              <AttendeeCountStepper
+                id="youth"
+                label={`NextGen / Youth (${YOUTH_AGE_RANGE})`}
+                value={youth}
+                onChange={setYouth}
+              />
+              <AttendeeCountStepper id="kids" label={`Kids (${KIDS_AGE_RANGE})`} value={kids} onChange={setKids} />
             </div>
             <div className="flex items-center justify-between text-sm pt-1 border-t border-border">
               <span className="text-muted-foreground">Total Attendees</span>
@@ -291,32 +242,6 @@ export function ChurchRegistrationForm({
               </span>
             </div>
           </div>
-
-          <div className="text-xs text-muted-foreground mt-0.5 flex justify-between pt-4">
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={onBack}>Back</Button>
-              <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-            </div>
-            <Button onClick={() => setStep(2)} disabled={!isStep1Valid || overAttendeeLimit} className="bg-brand-orange">
-              Continue to Venue
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Venue Selection */}
-      {step === 2 && (
-        <div className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-semibold text-foreground">Select Venue</h2>
-            <p className="text-muted-foreground mt-1">Choose which venue your group will attend</p>
-          </div>
-
-          <VenueSelector
-            selectedVenue={formData.venue}
-            onSelect={(venueId) => updateFormData("venue", venueId)}
-            venues={venues}
-          />
 
           <PaymentTypeSelector
             paymentType={paymentType}
@@ -339,15 +264,15 @@ export function ChurchRegistrationForm({
             <h3 className="font-medium text-foreground">Registration Summary</h3>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Category</span>
-              <span>{category.name}</span>
+              <span className="text-foreground">{category.name}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Church</span>
-              <span>{church?.name}</span>
+              <span className="text-foreground">{church?.name}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Attendees</span>
-              <span>{adults} adults, {youth} youth, {kids} kids ({total} total)</span>
+              <span className="text-foreground">{adults} adults, {youth} youth, {kids} kids ({total} total)</span>
             </div>
             <div className="flex justify-between border-t border-border/50 pt-2 font-semibold">
               <span>Total Fee</span>
@@ -361,17 +286,16 @@ export function ChurchRegistrationForm({
 
           <div className="flex justify-between pt-4">
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
+              <Button variant="outline" onClick={onBack}>Back</Button>
               <Button variant="ghost" onClick={onCancel}>Cancel</Button>
             </div>
-            <Button onClick={handleSubmit} disabled={!isStep2Valid || !turnstileToken || isProcessing}>
+            <Button onClick={handleSubmit} disabled={!isFormValid || overAttendeeLimit || !turnstileToken || isProcessing}>
               {isProcessing
                 ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting…</>
                 : "Submit Registration"}
             </Button>
           </div>
         </div>
-      )}
     </div>
   );
 }
