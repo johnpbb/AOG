@@ -5,7 +5,7 @@ import {
   sendAdminNotificationEmail,
 } from "@/lib/email";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { createRegistrationRecord, RegistrationCapacityError } from "@/lib/create-registration";
+import { createRegistrationRecord, RegistrationCapacityError, RegistrationValidationError } from "@/lib/create-registration";
 
 export async function POST(request: Request) {
   try {
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Registration Error:", error);
 
-    if (error instanceof RegistrationCapacityError) {
+    if (error instanceof RegistrationCapacityError || error instanceof RegistrationValidationError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
 

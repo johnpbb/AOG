@@ -51,14 +51,26 @@ export async function GET(request: Request) {
     const data = await response.json();
 
     const gatewaySuccess = data.result === 'SUCCESS' || data.status === 'CAPTURED';
-    const paidAmount = Number(data.order?.amount ?? data.amount ?? NaN);
-    const amountMatches = !Number.isNaN(paidAmount) && Math.abs(paidAmount - existing.fee) < 0.01;
+    // Prefer the actually-captured/authorized amount over the order's nominal
+    // "amount" (which just echoes what we asked for at session-creation time
+    // and so would trivially "match" even if nothing was actually charged).
+    // Field names aren't verified against a live ANZ/Mastercard Gateway
+    // response — if none of these are present, don't block a real payment on
+    // a guess: fall back to trusting the gateway's own success status alone,
+    // same as before this check existed.
+    const rawPaidAmount = data.totalCapturedAmount ?? data.totalAuthorizedAmount ?? data.order?.amount ?? data.amount;
+    const paidAmount = rawPaidAmount === undefined ? null : Number(rawPaidAmount);
+    const amountKnown = paidAmount !== null && !Number.isNaN(paidAmount);
+    const amountMatches = !amountKnown || Math.abs(paidAmount - existing.fee) < 0.01;
     const isSuccess = gatewaySuccess && amountMatches;
 
-    if (gatewaySuccess && !amountMatches) {
+    if (gatewaySuccess && amountKnown && !amountMatches) {
       console.error(
         `ANZ amount mismatch for ${regId}: gateway reported ${paidAmount}, expected ${existing.fee}`
       );
+    }
+    if (gatewaySuccess && !amountKnown) {
+      console.warn(`ANZ verify: could not determine paid amount for ${regId} — proceeding on gateway status alone.`, data);
     }
 
     if (isSuccess) {

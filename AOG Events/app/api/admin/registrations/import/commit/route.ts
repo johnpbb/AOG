@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createRegistrationRecord, RegistrationCapacityError, type CreateRegistrationInput } from "@/lib/create-registration";
+import { createRegistrationRecord, RegistrationCapacityError, RegistrationValidationError, type CreateRegistrationInput } from "@/lib/create-registration";
 
 // POST /api/admin/registrations/import/commit — creates one Registration per
 // row the admin confirmed on the review screen. Each row runs in its own
@@ -33,7 +33,10 @@ export async function POST(req: NextRequest) {
         results.push({
           rowNumber: row.rowNumber,
           success: false,
-          error: error instanceof RegistrationCapacityError ? error.message : "Could not create this registration.",
+          error:
+            error instanceof RegistrationCapacityError || error instanceof RegistrationValidationError
+              ? error.message
+              : "Could not create this registration.",
         });
       }
     }

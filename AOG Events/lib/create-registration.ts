@@ -52,6 +52,16 @@ export class RegistrationCapacityError extends Error {
   }
 }
 
+// Reused for "not a real capacity problem, but still not safe to proceed"
+// cases (currently: unrecognized category) — same shape/handling as a
+// capacity error at both call sites (safe .message, 409 status).
+export class RegistrationValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RegistrationValidationError";
+  }
+}
+
 /**
  * The single source of truth for creating a Registration: pool-capacity
  * check, reference-number generation, the row itself, and venue
@@ -61,8 +71,20 @@ export class RegistrationCapacityError extends Error {
  *
  * Must be called inside a prisma.$transaction — throws RegistrationCapacityError
  * (safe to show the message directly to a user) on a capacity/limit conflict.
+ *
+ * `input.fee` is intentionally ignored — the fee is always derived here from
+ * the category (and ticket count, for individual registrations), never
+ * trusted from the caller. The CSV import commit endpoint accepts
+ * client-echoed row data, and even the public form's `fee` field is
+ * client-supplied at the HTTP boundary, so trusting it directly would let a
+ * tampered request register for an arbitrary (e.g. zero) amount.
  */
 export async function createRegistrationRecord(tx: Prisma.TransactionClient, input: CreateRegistrationInput) {
+  const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === input.category);
+  if (!catInfo) {
+    throw new RegistrationValidationError(`"${input.category}" is not a recognized registration category.`);
+  }
+
   const isChurchPath = (input.type || "").toLowerCase() === "church";
   const numAdults = isChurchPath ? Math.max(0, input.adults ?? 0) : 0;
   const numYouth = isChurchPath ? Math.max(0, input.youth ?? 0) : 0;
@@ -70,9 +92,9 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
   const qty = isChurchPath ? numAdults + numYouth + numKids : Math.max(1, input.numberOfTickets ?? 1);
   // Kids don't receive a ticket/QR code — only adults and youth do.
   const ticketQty = isChurchPath ? numAdults + numYouth : qty;
-  const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === input.category);
+  const fee = isChurchPath ? catInfo.fee : catInfo.fee * qty;
 
-  if (catInfo?.registrationLimit !== null && catInfo?.registrationLimit !== undefined) {
+  if (catInfo.registrationLimit !== null) {
     const regCount = await tx.registration.count({
       where: { category: input.category, paymentStatus: "COMPLETED" },
     });
@@ -83,7 +105,7 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
     }
   }
 
-  if (catInfo) {
+  {
     // Seats are reserved against the pool the moment a registration is
     // submitted (even while payment is pending) — entry QR tickets
     // themselves aren't generated until the registration is fully paid
@@ -104,12 +126,12 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
     }
   }
 
-  const registrationId = await generateRegistrationId(tx, input.churchId || null, catInfo?.categoryCode ?? "XX", qty);
+  const registrationId = await generateRegistrationId(tx, input.churchId || null, catInfo.categoryCode, qty);
 
   const registration = await tx.registration.create({
     data: {
       registrationId,
-      category: input.category || "unknown",
+      category: catInfo.id,
       type: (input.type || "individual").toUpperCase() as "CHURCH" | "INDIVIDUAL",
       churchId: input.churchId || null,
       email: input.email || "unknown",
@@ -119,7 +141,7 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
       contactPhone: input.contactPhone || null,
       contactEmail: input.contactEmail || null,
       eventId: input.eventId,
-      fee: input.fee || 0,
+      fee,
       paymentMethod: input.paymentMethod === "online" ? "ONLINE" : "BANK_TRANSFER",
       paymentStatus: "PENDING",
       formData: (input.formData || {}) as Prisma.InputJsonValue,
