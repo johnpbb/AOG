@@ -104,7 +104,7 @@ export function AdminSidebar({ activeView, onViewChange }: AdminSidebarProps) {
           </nav>
 
           <div className="mt-auto pt-4 border-t border-border space-y-3">
-            <div className="text-xs text-muted-foreground">AOG Fiji Events Admin v2.0</div>
+            <div className="text-xs text-muted-foreground">AOG Fiji Events Admin</div>
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"

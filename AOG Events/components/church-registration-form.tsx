@@ -7,6 +7,7 @@ import { PaymentTypeSelector } from "./payment-type-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Building, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TurnstileWidget } from "@/components/turnstile-widget";
@@ -41,7 +42,7 @@ export function ChurchRegistrationForm({
   const [formData, setFormData] = useState({
     registrarName: "",
     pastorName: "",
-    contactPreference: "church" as "church" | "personal",
+    contactPreference: "church" as "church" | "personal" | "both",
     churchPhone: "",
     churchEmail: "",
     personalPhone: "",
@@ -60,13 +61,15 @@ export function ChurchRegistrationForm({
 
   const contactPhone = formData.contactPreference === "church" ? formData.churchPhone : formData.personalPhone;
   const contactEmail = formData.contactPreference === "church" ? formData.churchEmail : formData.personalEmail;
+  const needsChurchDetails = formData.contactPreference === "church" || formData.contactPreference === "both";
+  const needsPersonalDetails = formData.contactPreference === "personal" || formData.contactPreference === "both";
 
   const isFormValid =
     !!church &&
     formData.registrarName &&
     formData.pastorName &&
-    contactPhone &&
-    contactEmail &&
+    (!needsChurchDetails || (formData.churchPhone && formData.churchEmail)) &&
+    (!needsPersonalDetails || (formData.personalPhone && formData.personalEmail)) &&
     total > 0;
 
   const overAttendeeLimit = total > maxTickets;
@@ -178,32 +181,56 @@ export function ChurchRegistrationForm({
               Choose whether the confirmation email and QR code should go to the church&apos;s
               general contact, or to you personally.
             </p>
-            <div className="grid gap-3 md:grid-cols-2">
-              {(["church", "personal"] as const).map((pref) => (
-                <button key={pref} type="button" onClick={() => updateFormData("contactPreference", pref)}
-                  className={cn("p-3 rounded-lg border text-left text-sm transition-all",
+            <RadioGroup
+              value={formData.contactPreference}
+              onValueChange={(value) => updateFormData("contactPreference", value)}
+              className="grid gap-3 md:grid-cols-3"
+            >
+              {(["church", "personal", "both"] as const).map((pref) => (
+                <label key={pref} htmlFor={`contactPreference-${pref}`}
+                  className={cn("flex items-center gap-2 p-3 rounded-lg border text-sm cursor-pointer transition-all",
                     formData.contactPreference === pref
                       ? "border-primary bg-primary/5 ring-1 ring-primary"
                       : "border-border hover:border-primary/50"
                   )}>
-                  {pref === "church" ? "Use church contact details" : "Use my personal contact details"}
-                </button>
+                  <RadioGroupItem id={`contactPreference-${pref}`} value={pref} />
+                  {pref === "church" ? "Use church contact details" : pref === "personal" ? "Use my personal contact details" : "Both"}
+                </label>
               ))}
-            </div>
-            <FieldGroup className="grid gap-6 md:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="contactPhone">Phone Number</FieldLabel>
-                <Input id="contactPhone" type="tel" placeholder="+679 XXX XXXX"
-                  value={formData.contactPreference === "church" ? formData.churchPhone : formData.personalPhone}
-                  onChange={(e) => updateFormData(formData.contactPreference === "church" ? "churchPhone" : "personalPhone", e.target.value)} />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="contactEmail">Email Address</FieldLabel>
-                <Input id="contactEmail" type="email" placeholder="email@example.com"
-                  value={formData.contactPreference === "church" ? formData.churchEmail : formData.personalEmail}
-                  onChange={(e) => updateFormData(formData.contactPreference === "church" ? "churchEmail" : "personalEmail", e.target.value)} />
-              </Field>
-            </FieldGroup>
+            </RadioGroup>
+
+            {needsChurchDetails && (
+              <FieldGroup className="grid gap-6 md:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="churchPhone">{needsPersonalDetails ? "Church Phone Number" : "Phone Number"}</FieldLabel>
+                  <Input id="churchPhone" type="tel" placeholder="+679 XXX XXXX"
+                    value={formData.churchPhone}
+                    onChange={(e) => updateFormData("churchPhone", e.target.value)} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="churchEmail">{needsPersonalDetails ? "Church Email Address" : "Email Address"}</FieldLabel>
+                  <Input id="churchEmail" type="email" placeholder="email@example.com"
+                    value={formData.churchEmail}
+                    onChange={(e) => updateFormData("churchEmail", e.target.value)} />
+                </Field>
+              </FieldGroup>
+            )}
+            {needsPersonalDetails && (
+              <FieldGroup className="grid gap-6 md:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="personalPhone">{needsChurchDetails ? "Personal Phone Number" : "Phone Number"}</FieldLabel>
+                  <Input id="personalPhone" type="tel" placeholder="+679 XXX XXXX"
+                    value={formData.personalPhone}
+                    onChange={(e) => updateFormData("personalPhone", e.target.value)} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="personalEmail">{needsChurchDetails ? "Personal Email Address" : "Email Address"}</FieldLabel>
+                  <Input id="personalEmail" type="email" placeholder="email@example.com"
+                    value={formData.personalEmail}
+                    onChange={(e) => updateFormData("personalEmail", e.target.value)} />
+                </Field>
+              </FieldGroup>
+            )}
           </div>
 
           {/* Attendance Demographics */}
