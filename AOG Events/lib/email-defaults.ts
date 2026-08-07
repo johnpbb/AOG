@@ -100,6 +100,7 @@ export const TEMPLATE_META: Record<TemplateName, TemplateMeta> = {
     description: "Sent to the finance mailbox the moment a staff member logs a payment entry.",
     variables: [
       { name: "registrationId", description: "Registration ID", sample: "AG100-027VL301" },
+      { name: "registrantName", description: "Church or individual name on the registration", sample: "Suva Central AOG" },
       { name: "amount", description: "Amount just logged (FJD)", sample: "$500.00" },
       { name: "totalPaid", description: "Running total paid (FJD)", sample: "$1,500.00" },
       { name: "remainingBalance", description: "Remaining balance (FJD)", sample: "$8,500.00" },
@@ -166,7 +167,7 @@ Once the HQ Finance team manually matches your reference, you'll receive a confi
     subject: "Payment Logged – {{registrationId}}",
     preHeading: "Payment Logged",
     heading: "A payment has been logged",
-    bodyHtml: `<p><strong>{{confirmedByName}}</strong> logged a payment of <strong>{{amount}}</strong> against registration <strong>{{registrationId}}</strong>.</p>`,
+    bodyHtml: `<p><strong>{{confirmedByName}}</strong> logged a payment of <strong>{{amount}}</strong> against registration <strong>{{registrationId}}</strong> (<strong>{{registrantName}}</strong>).</p>`,
     ctaText: "",
     ctaUrl: "",
     closingHtml: `<p>Total paid so far: <strong>{{totalPaid}}</strong>. Remaining balance: <strong>{{remainingBalance}}</strong>.</p>`,

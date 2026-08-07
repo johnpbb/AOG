@@ -185,10 +185,8 @@ export function RegistrationsList() {
                 <SelectItem value="large-church">Large Church</SelectItem>
                 <SelectItem value="medium-church">Medium Church</SelectItem>
                 <SelectItem value="small-church">Small Church</SelectItem>
-                <SelectItem value="church-plant">Church Plant</SelectItem>
-                <SelectItem value="wfc">World Fijian Congress</SelectItem>
-                <SelectItem value="wfc-partner">WFC Partner</SelectItem>
                 <SelectItem value="individual">Individual</SelectItem>
+                <SelectItem value="overseas-delegates">Overseas Delegates</SelectItem>
               </SelectContent>
             </Select>
             <Select value={paymentFilter} onValueChange={setPaymentFilter}>

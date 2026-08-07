@@ -25,8 +25,6 @@ interface LookupResult {
   adults: number;
   youth: number;
   kids: number;
-  numberOfTickets: number;
-  maxTicketsPerReg: number | null;
 }
 
 export default function ManageRegistrationPage() {
@@ -76,13 +74,9 @@ export default function ManageRegistrationPage() {
         phone: data.phone,
       };
       if (!data.headcountLocked) {
-        if (data.type === "CHURCH") {
-          payload.adults = data.adults;
-          payload.youth = data.youth;
-          payload.kids = data.kids;
-        } else {
-          payload.numberOfTickets = data.numberOfTickets;
-        }
+        payload.adults = data.adults;
+        payload.youth = data.youth;
+        payload.kids = data.kids;
       }
 
       const res = await fetch("/api/register/amend", {
@@ -175,63 +169,54 @@ export default function ManageRegistrationPage() {
             )}
 
             {data.type === "CHURCH" ? (
-              <>
-                <FieldGroup className="grid gap-6 md:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="registrarName">Registrar Name</FieldLabel>
-                    <Input id="registrarName" value={data.registrarName ?? ""}
-                      onChange={(e) => setData({ ...data, registrarName: e.target.value })} />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="pastorName">Pastor / Leader Name</FieldLabel>
-                    <Input id="pastorName" value={data.pastorName ?? ""}
-                      onChange={(e) => setData({ ...data, pastorName: e.target.value })} />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="contactPhone">Phone Number</FieldLabel>
-                    <Input id="contactPhone" type="tel" value={data.contactPhone ?? ""}
-                      onChange={(e) => setData({ ...data, contactPhone: e.target.value })} />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="contactEmail">Email Address</FieldLabel>
-                    <Input id="contactEmail" type="email" value={data.contactEmail ?? ""}
-                      onChange={(e) => setData({ ...data, contactEmail: e.target.value })} />
-                  </Field>
-                </FieldGroup>
-
-                <div className="p-5 rounded-xl border-2 border-border bg-secondary/30 space-y-3">
-                  <FieldLabel>Attendance Demographics</FieldLabel>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <AttendeeCountStepper id="adults" label="Adults" value={data.adults} disabled={data.headcountLocked}
-                      onChange={(v) => setData({ ...data, adults: v })} />
-                    <AttendeeCountStepper id="youth" label="NextGen / Youth" value={data.youth} disabled={data.headcountLocked}
-                      onChange={(v) => setData({ ...data, youth: v })} />
-                    <AttendeeCountStepper id="kids" label="Kids" value={data.kids} disabled={data.headcountLocked}
-                      onChange={(v) => setData({ ...data, kids: v })} />
-                  </div>
-                </div>
-              </>
+              <FieldGroup className="grid gap-6 md:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="registrarName">Registrar Name</FieldLabel>
+                  <Input id="registrarName" value={data.registrarName ?? ""}
+                    onChange={(e) => setData({ ...data, registrarName: e.target.value })} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="pastorName">Pastor / Leader Name</FieldLabel>
+                  <Input id="pastorName" value={data.pastorName ?? ""}
+                    onChange={(e) => setData({ ...data, pastorName: e.target.value })} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="contactPhone">Phone Number</FieldLabel>
+                  <Input id="contactPhone" type="tel" value={data.contactPhone ?? ""}
+                    onChange={(e) => setData({ ...data, contactPhone: e.target.value })} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="contactEmail">Email Address</FieldLabel>
+                  <Input id="contactEmail" type="email" value={data.contactEmail ?? ""}
+                    onChange={(e) => setData({ ...data, contactEmail: e.target.value })} />
+                </Field>
+              </FieldGroup>
             ) : (
-              <>
-                <FieldGroup className="grid gap-6 md:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="email">Email Address</FieldLabel>
-                    <Input id="email" type="email" value={data.email}
-                      onChange={(e) => setData({ ...data, email: e.target.value })} />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="phone">Phone Number</FieldLabel>
-                    <Input id="phone" type="tel" value={data.phone ?? ""}
-                      onChange={(e) => setData({ ...data, phone: e.target.value })} />
-                  </Field>
-                </FieldGroup>
-
-                <div className="p-5 rounded-xl border-2 border-border bg-secondary/30">
-                  <AttendeeCountStepper id="numberOfTickets" label="Number of Tickets" value={data.numberOfTickets}
-                    disabled={data.headcountLocked} onChange={(v) => setData({ ...data, numberOfTickets: v })} />
-                </div>
-              </>
+              <FieldGroup className="grid gap-6 md:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="email">Email Address</FieldLabel>
+                  <Input id="email" type="email" value={data.email}
+                    onChange={(e) => setData({ ...data, email: e.target.value })} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="phone">Phone Number</FieldLabel>
+                  <Input id="phone" type="tel" value={data.phone ?? ""}
+                    onChange={(e) => setData({ ...data, phone: e.target.value })} />
+                </Field>
+              </FieldGroup>
             )}
+
+            <div className="p-5 rounded-xl border-2 border-border bg-secondary/30 space-y-3">
+              <FieldLabel>Attendance Demographics</FieldLabel>
+              <div className="grid gap-3 md:grid-cols-3">
+                <AttendeeCountStepper id="adults" label="Adults" value={data.adults} disabled={data.headcountLocked}
+                  onChange={(v) => setData({ ...data, adults: v })} />
+                <AttendeeCountStepper id="youth" label="NextGen / Youth" value={data.youth} disabled={data.headcountLocked}
+                  onChange={(v) => setData({ ...data, youth: v })} />
+                <AttendeeCountStepper id="kids" label="Kids" value={data.kids} disabled={data.headcountLocked}
+                  onChange={(v) => setData({ ...data, kids: v })} />
+              </div>
+            </div>
 
             <div className="flex justify-between pt-2">
               <Button variant="outline" onClick={() => { setData(null); setLookupToken(null); setSaved(false); }}>

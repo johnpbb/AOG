@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { generateTicketsForRegistration } from "@/lib/tickets";
+import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues } from "@/lib/tickets";
 import { sendFinanceNotificationEmail, sendBalanceUpdateEmail, sendTicketConfirmationEmail } from "@/lib/email";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
 import { format } from "date-fns";
@@ -44,7 +44,14 @@ export async function POST(
     const result = await prisma.$transaction(async (tx) => {
       const registration = await tx.registration.findUnique({
         where: { id },
-        include: { payments: true, tickets: true, venue: true, event: true },
+        include: {
+          payments: true,
+          tickets: true,
+          venue: true,
+          venueAllocations: { include: { venue: { select: { name: true, city: true } } } },
+          event: true,
+          church: true,
+        },
       });
       if (!registration) throw new Error("NOT_FOUND");
       if (registration.paymentStatus === "CANCELLED") throw new Error("CANCELLED");
@@ -84,11 +91,21 @@ export async function POST(
     const remainingBalance = Math.max(0, result.registration.fee - result.totalPaid);
     const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === result.registration.category);
 
+    const formData = result.registration.formData as Record<string, any>;
+    const registrantName =
+      result.registration.church?.name ||
+      formData?.pastorName ||
+      (formData?.firstName ? `${formData.firstName} ${formData.lastName ?? ""}`.trim() : null) ||
+      result.registration.registrarName ||
+      result.registration.email;
+    const ticketsWithVenue = attachVenuesToTickets(result.tickets, result.registration.venueAllocations);
+
     await Promise.allSettled([
       siteConfig?.financeNotificationEmail
         ? sendFinanceNotificationEmail({
             to: siteConfig.financeNotificationEmail,
             registrationId: result.registration.registrationId,
+            registrantName: String(registrantName),
             amount: result.payment.amount,
             totalPaid: result.totalPaid,
             remainingBalance,
@@ -115,9 +132,9 @@ export async function POST(
             eventDate: result.registration.event?.startDate
               ? format(new Date(result.registration.event.startDate), "d MMMM yyyy")
               : "TBC",
-            venueName: result.registration.venue?.name ?? "",
+            venueName: summarizeTicketVenues(ticketsWithVenue) || result.registration.venue?.name || "",
             venueCity: result.registration.venue?.city ?? "",
-            tickets: result.tickets,
+            tickets: ticketsWithVenue,
             appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
           })
         : Promise.resolve(),

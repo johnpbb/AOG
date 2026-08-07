@@ -44,3 +44,23 @@ export async function generateTicketsForRegistration(
     orderBy: { ticketNumber: "asc" },
   });
 }
+
+// Maps each ticket to the venue its ticket type (Adult/Youth) was allocated
+// to for this registration, via VenueAllocation — used to print the venue on
+// each ticket and color-code by type. Kids never appear here (no ticket).
+export function attachVenuesToTickets<T extends { ticketType: "ADULT" | "YOUTH" }>(
+  tickets: T[],
+  venueAllocations: { audienceType: string; venue: { name: string; city: string | null } | null }[]
+): (T & { venueName: string; venueCity: string })[] {
+  const byAudience = new Map(venueAllocations.map((a) => [a.audienceType, a.venue]));
+  return tickets.map((t) => {
+    const venue = byAudience.get(t.ticketType === "ADULT" ? "adults" : "youth");
+    return { ...t, venueName: venue?.name ?? "", venueCity: venue?.city ?? "" };
+  });
+}
+
+// A short summary string for the email body (e.g. "Mount Zion Cathedral,
+// Churchill Park") when a registration's tickets span more than one venue.
+export function summarizeTicketVenues(tickets: { venueName: string }[]): string {
+  return Array.from(new Set(tickets.map((t) => t.venueName).filter(Boolean))).join(", ");
+}

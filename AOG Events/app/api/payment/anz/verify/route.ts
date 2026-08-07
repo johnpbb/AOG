@@ -1,7 +1,9 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
-import { sendConfirmationEmail } from '@/lib/mail';
-import { generateTicketsForRegistration } from '@/lib/tickets';
+import { sendTicketConfirmationEmail } from '@/lib/email';
+import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues } from '@/lib/tickets';
+import { REGISTRATION_CATEGORIES } from '@/lib/types';
+import { format } from 'date-fns';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -83,29 +85,45 @@ export async function GET(request: Request) {
         },
         include: {
           attendees: true,
-          tickets: { select: { id: true } },
+          tickets: { select: { ticketNumber: true, ticketType: true } },
+          event: true,
+          venue: true,
+          venueAllocations: { include: { venue: { select: { name: true, city: true } } } },
         }
       });
 
       // Issue entry QR tickets now that payment is confirmed (idempotent —
       // skip if a webhook already created them for this registration).
-      if (updatedRegistration.tickets.length === 0) {
-        await prisma.$transaction((tx) =>
-          generateTicketsForRegistration(tx, updatedRegistration.id, updatedRegistration.numberOfAttendees, 0)
+      let tickets = updatedRegistration.tickets;
+      if (tickets.length === 0) {
+        tickets = await prisma.$transaction((tx) =>
+          generateTicketsForRegistration(tx, updatedRegistration.id, updatedRegistration.adults, updatedRegistration.youth)
         );
       }
 
       // Send confirmation email (don't await to avoid blocking the response)
-      const name = updatedRegistration.attendees.length > 0 
+      const name = updatedRegistration.attendees.length > 0
         ? `${updatedRegistration.attendees[0].firstName} ${updatedRegistration.attendees[0].lastName}`
         : "Attendee";
 
-      sendConfirmationEmail(
-        updatedRegistration.email,
-        updatedRegistration.registrationId,
-        name,
-        updatedRegistration.category
-      ).catch(err => console.error("Background Email Error:", err));
+      const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === updatedRegistration.category);
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+      const ticketsWithVenue = attachVenuesToTickets(tickets, updatedRegistration.venueAllocations);
+
+      sendTicketConfirmationEmail({
+        to: updatedRegistration.email,
+        registrantName: name,
+        registrationId: updatedRegistration.registrationId,
+        category: catInfo?.name ?? updatedRegistration.category,
+        eventName: updatedRegistration.event?.name ?? "AOG Fiji 100th Anniversary",
+        eventDate: updatedRegistration.event?.startDate
+          ? format(new Date(updatedRegistration.event.startDate), "d MMMM yyyy")
+          : "TBC",
+        venueName: summarizeTicketVenues(ticketsWithVenue) || updatedRegistration.venue?.name || "",
+        venueCity: updatedRegistration.venue?.city ?? "",
+        tickets: ticketsWithVenue,
+        appUrl,
+      }).catch(err => console.error("Background Email Error:", err));
     }
 
     return NextResponse.json({

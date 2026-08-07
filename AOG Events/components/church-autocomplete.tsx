@@ -16,7 +16,7 @@ export interface ChurchOption {
 interface ChurchAutocompleteProps {
   value: ChurchOption | null;
   onSelect: (church: ChurchOption) => void;
-  country?: string; // scope the search to a specific country (e.g. WFC lookups)
+  country?: string; // scope the search to a specific country
   placeholder?: string;
 }
 

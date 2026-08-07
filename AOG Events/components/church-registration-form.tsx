@@ -15,12 +15,11 @@ import { AttendeeCountStepper } from "@/components/attendee-count-stepper";
 
 interface ChurchRegistrationFormProps {
   category: CategoryInfo;
-  church: ChurchOption | null; // pre-selected from the church-lookup step; null for WFC-without-a-real-match
+  church: ChurchOption | null; // pre-selected from the church-lookup step
   onBack: () => void;
   onCancel: () => void;
   onSubmit: (data: unknown) => void;
   eventId?: string;
-  stepperMax?: number;
 }
 
 export function ChurchRegistrationForm({
@@ -30,14 +29,11 @@ export function ChurchRegistrationForm({
   onCancel,
   onSubmit,
   eventId,
-  stepperMax,
 }: ChurchRegistrationFormProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const maxTickets = stepperMax !== undefined
-    ? Math.min(category.maxTicketsPerReg, stepperMax)
-    : category.maxTicketsPerReg;
+  const perRegCap = category.perRegCap ?? { adults: Infinity, youth: Infinity, kids: Infinity };
 
   const [formData, setFormData] = useState({
     registrarName: "",
@@ -72,7 +68,7 @@ export function ChurchRegistrationForm({
     (!needsPersonalDetails || (formData.personalPhone && formData.personalEmail)) &&
     total > 0;
 
-  const overAttendeeLimit = total > maxTickets;
+  const overAttendeeLimit = adults > perRegCap.adults || youth > perRegCap.youth || kids > perRegCap.kids;
 
   const handleSubmit = async () => {
     setIsProcessing(true);
@@ -238,7 +234,8 @@ export function ChurchRegistrationForm({
             <div>
               <FieldLabel>Attendance Demographics</FieldLabel>
               <p className="text-xs text-muted-foreground mt-0.5">
-                How many attendees from your church, by age group? (max {maxTickets.toLocaleString()} total)
+                How many attendees from your church, by age group? (max {perRegCap.adults.toLocaleString()} adults,{" "}
+                {perRegCap.youth.toLocaleString()} youth, {perRegCap.kids.toLocaleString()} kids)
               </p>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
@@ -259,7 +256,9 @@ export function ChurchRegistrationForm({
             </div>
             {overAttendeeLimit && (
               <p className="text-destructive text-xs">
-                This exceeds the {maxTickets.toLocaleString()} attendee limit for {category.name}. Please reduce your numbers or choose a different category.
+                This exceeds the attendee limit for {category.name} (max {perRegCap.adults.toLocaleString()} adults,{" "}
+                {perRegCap.youth.toLocaleString()} youth, {perRegCap.kids.toLocaleString()} kids). Please reduce your
+                numbers or choose a different category.
               </p>
             )}
             <div className="flex items-center justify-between text-sm pt-1 border-t border-border">

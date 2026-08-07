@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 
 // Fiji is UTC+12
 const FIJI_OFFSET_MS = 12 * 60 * 60 * 1000;
@@ -19,6 +20,11 @@ const TICKET_NUMBER_RE = /^AOG-TKT-\d+$/;
 // ─── GET /api/admin/check-in?date=YYYY-MM-DD ───────────────────────────────
 // Returns daily stats: check-ins, check-outs, currently inside, flagged anomalies
 export async function GET(req: NextRequest) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date") || getFijiDateString();
 
@@ -101,6 +107,11 @@ export async function GET(req: NextRequest) {
 // Ticket QR scan handler — auto-detects CHECK_IN / CHECK_OUT / RE_ENTRY,
 // scoped per-ticket rather than per-registration.
 export async function POST(request: Request) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const code: string = String(body.code ?? body.ticketNumber ?? "").trim().toUpperCase();
@@ -219,6 +230,11 @@ export async function POST(request: Request) {
 // ─── PATCH /api/admin/check-in ─────────────────────────────────────────────
 // Admin manual force-checkout by ticket — flags if no prior check-in today
 export async function PATCH(request: Request) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const code: string = String(body.ticketNumber ?? body.code ?? "").trim().toUpperCase();
@@ -279,6 +295,11 @@ export async function PATCH(request: Request) {
 // ─── DELETE /api/admin/check-in?eventId=xxx ────────────────────────────────
 // Resolve (dismiss) a flagged anomaly
 export async function DELETE(req: NextRequest) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const eventId = searchParams.get("eventId");
 

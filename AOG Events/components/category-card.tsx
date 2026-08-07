@@ -61,11 +61,18 @@ export function CategoryCard({ category, isSelected, onSelect }: CategoryCardPro
             </div>
             {isSelected && (
               <div className="mt-3 p-3 rounded-lg bg-secondary/60 text-xs text-muted-foreground space-y-1">
-                <p>
-                  Registration limit:{" "}
-                  {category.registrationLimit === null ? "No cap" : `${category.registrationLimit} registrations`}
-                </p>
-                <p>Total seats available in this category: {category.ticketPool.toLocaleString()}</p>
+                {category.perRegCap && (
+                  <p>
+                    Max per registration: {category.perRegCap.adults.toLocaleString()} adults,{" "}
+                    {category.perRegCap.youth.toLocaleString()} youth, {category.perRegCap.kids.toLocaleString()} kids
+                  </p>
+                )}
+                {category.pool && (
+                  <p>
+                    Total seats available: {category.pool.adults.toLocaleString()} adults,{" "}
+                    {category.pool.youth.toLocaleString()} youth, {category.pool.kids.toLocaleString()} kids
+                  </p>
+                )}
                 <p>Registration fee: ${category.fee.toLocaleString()} FJD</p>
               </div>
             )}

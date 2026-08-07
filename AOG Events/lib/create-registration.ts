@@ -1,4 +1,4 @@
-import { REGISTRATION_CATEGORIES, INSTALLMENT_DEADLINE } from "@/lib/types";
+import { REGISTRATION_CATEGORIES, INSTALLMENT_DEADLINE, CategoryInfo } from "@/lib/types";
 import { autoAssignVenues, applyVenueAllocations } from "@/lib/venue-assignment";
 import type { Prisma } from "@prisma/client";
 
@@ -62,6 +62,66 @@ export class RegistrationValidationError extends Error {
   }
 }
 
+export interface HeadcountInput {
+  adults: number;
+  youth: number;
+  kids: number;
+}
+
+/**
+ * Category capacity check, shared by initial registration and amendment so
+ * the two rules can't drift apart. Two independent capping strategies:
+ *  - perRegCap: a static max per single registration (church tiers) — the
+ *    real ceiling on total attendance is venue capacity, not an aggregate
+ *    pool, since any number of churches may register within a size bracket.
+ *  - pool: an aggregate cap shared across every registration in the category
+ *    (Individual, Overseas Delegates), checked as three independent
+ *    adults/youth/kids sub-pools.
+ * `excludeRegistrationId` lets an amendment compare its new totals against
+ * the pool with its own prior reservation left out, instead of a delta.
+ */
+export async function checkCategoryCapacity(
+  tx: Prisma.TransactionClient,
+  catInfo: CategoryInfo,
+  counts: HeadcountInput,
+  excludeRegistrationId?: string
+): Promise<void> {
+  if (catInfo.perRegCap) {
+    const { adults, youth, kids } = catInfo.perRegCap;
+    if (counts.adults > adults || counts.youth > youth || counts.kids > kids) {
+      throw new RegistrationCapacityError(
+        `This exceeds the per-registration limit for ${catInfo.name} (max ${adults} adults, ${youth} youth, ${kids} kids).`
+      );
+    }
+    return;
+  }
+
+  if (catInfo.pool) {
+    const activeRegs = await tx.registration.findMany({
+      where: {
+        category: catInfo.id,
+        paymentStatus: { not: "CANCELLED" },
+        ...(excludeRegistrationId ? { id: { not: excludeRegistrationId } } : {}),
+      },
+      select: { adults: true, youth: true, kids: true },
+    });
+    const used = activeRegs.reduce(
+      (acc, r) => ({ adults: acc.adults + r.adults, youth: acc.youth + r.youth, kids: acc.kids + r.kids }),
+      { adults: 0, youth: 0, kids: 0 }
+    );
+    const remaining = {
+      adults: catInfo.pool.adults - used.adults,
+      youth: catInfo.pool.youth - used.youth,
+      kids: catInfo.pool.kids - used.kids,
+    };
+    if (counts.adults > remaining.adults || counts.youth > remaining.youth || counts.kids > remaining.kids) {
+      throw new RegistrationCapacityError(
+        `Only ${Math.max(0, remaining.adults)} adult / ${Math.max(0, remaining.youth)} youth / ${Math.max(0, remaining.kids)} kids seat(s) remain in the ${catInfo.name} pool.`
+      );
+    }
+  }
+}
+
 /**
  * The single source of truth for creating a Registration: pool-capacity
  * check, reference-number generation, the row itself, and venue
@@ -86,44 +146,35 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
   }
 
   const isChurchPath = (input.type || "").toLowerCase() === "church";
-  const numAdults = isChurchPath ? Math.max(0, input.adults ?? 0) : 0;
-  const numYouth = isChurchPath ? Math.max(0, input.youth ?? 0) : 0;
-  const numKids = isChurchPath ? Math.max(0, input.kids ?? 0) : 0;
-  const qty = isChurchPath ? numAdults + numYouth + numKids : Math.max(1, input.numberOfTickets ?? 1);
+  const numAdults = Math.max(0, input.adults ?? 0);
+  const numYouth = Math.max(0, input.youth ?? 0);
+  const numKids = Math.max(0, input.kids ?? 0);
+  const qty = numAdults + numYouth + numKids;
+  if (qty <= 0) {
+    throw new RegistrationValidationError("At least one attendee is required.");
+  }
   // Kids don't receive a ticket/QR code — only adults and youth do.
-  const ticketQty = isChurchPath ? numAdults + numYouth : qty;
+  const ticketQty = numAdults + numYouth;
+  // Church fee is flat per registration regardless of headcount within its
+  // cap; individual/overseas fee scales per attendee.
   const fee = isChurchPath ? catInfo.fee : catInfo.fee * qty;
 
-  if (catInfo.registrationLimit !== null) {
-    const regCount = await tx.registration.count({
-      where: { category: input.category, paymentStatus: "COMPLETED" },
-    });
-    if (regCount >= catInfo.registrationLimit) {
-      throw new RegistrationCapacityError(
-        `All ${catInfo.registrationLimit} registrations for ${catInfo.name} have been received.`
-      );
-    }
-  }
+  await checkCategoryCapacity(tx, catInfo, { adults: numAdults, youth: numYouth, kids: numKids });
 
-  {
-    // Seats are reserved against the pool the moment a registration is
-    // submitted (even while payment is pending) — entry QR tickets
-    // themselves aren't generated until the registration is fully paid
-    // (see lib/tickets.ts), so we can't count Ticket rows here.
-    const activeRegs = await tx.registration.findMany({
-      where: { category: input.category, paymentStatus: { not: "CANCELLED" } },
-      select: { type: true, adults: true, youth: true, numberOfAttendees: true },
-    });
-    const reservedSeats = activeRegs.reduce(
-      (sum, r) => sum + (r.type === "CHURCH" ? r.adults + r.youth : r.numberOfAttendees),
-      0
+  // Venue capacity is the true ceiling on total attendance (each cell
+  // auto-locks when full — no manual override without going through the
+  // admin's separate manual-registration/CSV-import tools). Check this
+  // before creating anything so a full venue rejects outright rather than
+  // silently succeeding without a venue slot.
+  const { allocations, warnings: venueWarnings } = await autoAssignVenues(tx, input.eventId, {
+    adults: numAdults,
+    youth: numYouth,
+    kids: numKids,
+  });
+  if (venueWarnings.length > 0) {
+    throw new RegistrationCapacityError(
+      "This session is full. Please try a different registration or contact the event team."
     );
-    const remaining = catInfo.ticketPool - reservedSeats;
-    if (ticketQty > remaining) {
-      throw new RegistrationCapacityError(
-        `Only ${remaining} seats remain in the ${catInfo.name} pool. You requested ${ticketQty}.`
-      );
-    }
   }
 
   const registrationId = await generateRegistrationId(tx, input.churchId || null, catInfo.categoryCode, qty);
@@ -167,15 +218,6 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
     },
   });
 
-  // Split adults/youth/kids across whichever venues are dedicated to each
-  // age group and still have room. Provisional — a bucket without a
-  // matching/available venue is simply skipped rather than blocking the
-  // registration (see lib/venue-assignment.ts).
-  const { allocations, warnings: venueWarnings } = await autoAssignVenues(tx, input.eventId, {
-    adults: numAdults,
-    youth: numYouth,
-    kids: numKids,
-  });
   await applyVenueAllocations(tx, registration.id, allocations);
 
   return { registration, catInfo, qty, venueWarnings };

@@ -89,28 +89,33 @@ export function validateCsvRow(
     }
   }
 
-  let adults = 0, youth = 0, kids = 0, numberOfTickets = 1;
+  let adults = Math.max(0, parseInt(get("Adults"), 10) || 0);
+  let youth = Math.max(0, parseInt(get("Youth"), 10) || 0);
+  let kids = Math.max(0, parseInt(get("Kids"), 10) || 0);
+
   if (type === "church") {
-    adults = Math.max(0, parseInt(get("Adults"), 10) || 0);
-    youth = Math.max(0, parseInt(get("Youth"), 10) || 0);
-    kids = Math.max(0, parseInt(get("Kids"), 10) || 0);
     if (adults + youth + kids <= 0) {
       errors.push("At least one of Adults/Youth/Kids must be greater than zero for a church registration");
     }
     if (!get("Registrar Name")) errors.push("Registrar Name is required for a church registration");
   } else if (type === "individual") {
-    numberOfTickets = Math.max(1, parseInt(get("Number of Tickets"), 10) || 1);
+    if (adults + youth + kids <= 0) {
+      // Back-compat: a plain "Number of Tickets" count with no age split is treated as all-adults.
+      const legacyTickets = Math.max(0, parseInt(get("Number of Tickets"), 10) || 0);
+      adults = legacyTickets > 0 ? legacyTickets : 1;
+    }
     if (!get("First Name") || !get("Last Name")) {
       errors.push("First Name and Last Name are required for an individual registration");
     }
   }
 
+  const numberOfTickets = adults + youth + kids;
+
   const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === category);
-  if (catInfo && type === "church" && adults + youth + kids > catInfo.maxTicketsPerReg) {
-    errors.push(`Total attendees exceed the ${catInfo.maxTicketsPerReg.toLocaleString()} limit for ${catInfo.name}`);
-  }
-  if (catInfo && type === "individual" && numberOfTickets > catInfo.maxTicketsPerReg) {
-    errors.push(`Number of tickets exceeds the ${catInfo.maxTicketsPerReg.toLocaleString()} limit for ${catInfo.name}`);
+  if (catInfo?.perRegCap && (adults > catInfo.perRegCap.adults || youth > catInfo.perRegCap.youth || kids > catInfo.perRegCap.kids)) {
+    errors.push(
+      `Attendee counts exceed the per-registration limit for ${catInfo.name} (max ${catInfo.perRegCap.adults} adults, ${catInfo.perRegCap.youth} youth, ${catInfo.perRegCap.kids} kids)`
+    );
   }
 
   if (errors.length > 0) {

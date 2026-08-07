@@ -39,6 +39,7 @@ async function loadTemplate(name: TemplateName): Promise<EmailTemplateContent> {
 
 interface TicketPageParams {
   ticketNumber: string;
+  ticketType: "ADULT" | "YOUTH";
   registrationId: string;
   registrantName: string;
   category: string;
@@ -51,24 +52,32 @@ interface TicketPageParams {
   totalPages: number;
 }
 
+// Adult = brand orange, Youth = brand yellow/gold — matches the client's
+// "badge colour-coding" requirement. Kids don't get tickets, so no color yet.
+const TICKET_ACCENT_COLORS = {
+  ADULT: rgb(1, 0.42, 0),
+  YOUTH: rgb(1, 0.949, 0),
+} as const;
+
 async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
   const page = pdfDoc.addPage([595.28, 841.89]); // A4
   const { height } = page.getSize();
 
   const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const accentColor = TICKET_ACCENT_COLORS[p.ticketType];
 
   const label = (text: string, x: number, y: number) =>
     page.drawText(text, { x, y, size: 9, font: regular, color: rgb(0.44, 0.5, 0.59) });
-  const value = (text: string, x: number, y: number, size = 13) =>
-    page.drawText(text, { x, y, size, font: bold, color: rgb(0.1, 0.13, 0.17) });
+  const value = (text: string, x: number, y: number, size = 13, color = rgb(0.1, 0.13, 0.17)) =>
+    page.drawText(text, { x, y, size, font: bold, color });
 
   // Header
   page.drawText("AOG FIJI 100TH ANNIVERSARY", {
     x: 50, y: height - 70, size: 22, font: bold, color: rgb(0.1, 0.13, 0.17),
   });
-  page.drawText("Official Event Ticket", {
-    x: 50, y: height - 94, size: 13, font: regular, color: rgb(0.39, 0.45, 0.55),
+  page.drawText(`${p.ticketType === "ADULT" ? "Adult" : "Youth"} Entry Ticket`, {
+    x: 50, y: height - 94, size: 13, font: bold, color: accentColor,
   });
 
   // Page counter (e.g. "Ticket 2 of 4")
@@ -76,8 +85,8 @@ async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
     x: 490, y: height - 70, size: 9, font: regular, color: rgb(0.6, 0.65, 0.72),
   });
 
-  // Orange accent bar
-  page.drawRectangle({ x: 50, y: height - 103, width: 495, height: 3, color: rgb(1, 0.42, 0) });
+  // Accent bar, color-coded by ticket type
+  page.drawRectangle({ x: 50, y: height - 103, width: 495, height: 3, color: accentColor });
 
   // Ticket box border
   page.drawRectangle({
@@ -110,8 +119,13 @@ async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
   page.drawText("Event Details", { x: 50, y: height - 460, size: 11, font: bold, color: rgb(0.1, 0.13, 0.17) });
   label(p.eventName, 50, height - 478);
   const venue = [p.venueName, p.venueCity].filter(Boolean).join(", ");
-  if (venue) label(venue, 50, height - 494);
-  if (p.eventDate) label(`Date: ${p.eventDate}`, 50, height - 510);
+  if (venue) {
+    label("VENUE", 50, height - 496);
+    value(venue, 50, height - 512, 13, accentColor);
+    if (p.eventDate) label(`Date: ${p.eventDate}`, 50, height - 530);
+  } else if (p.eventDate) {
+    label(`Date: ${p.eventDate}`, 50, height - 494);
+  }
 
   // Footer
   page.drawText(
@@ -121,8 +135,8 @@ async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
 }
 
 async function generateTicketsPdf(
-  tickets: { ticketNumber: string; qrBuffer: Buffer }[],
-  shared: Omit<TicketPageParams, "ticketNumber" | "qrBuffer" | "pageNumber" | "totalPages">
+  tickets: { ticketNumber: string; ticketType: "ADULT" | "YOUTH"; venueName: string; venueCity: string; qrBuffer: Buffer }[],
+  shared: Omit<TicketPageParams, "ticketNumber" | "ticketType" | "venueName" | "venueCity" | "qrBuffer" | "pageNumber" | "totalPages">
 ): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create();
 
@@ -130,6 +144,9 @@ async function generateTicketsPdf(
     await addTicketPage(pdfDoc, {
       ...shared,
       ticketNumber: tickets[i].ticketNumber,
+      ticketType: tickets[i].ticketType,
+      venueName: tickets[i].venueName,
+      venueCity: tickets[i].venueCity,
       qrBuffer: tickets[i].qrBuffer,
       pageNumber: i + 1,
       totalPages: tickets.length,
@@ -269,7 +286,7 @@ interface TicketEmailParams {
   eventDate: string;
   venueName: string;
   venueCity: string;
-  tickets: { ticketNumber: string }[];
+  tickets: { ticketNumber: string; ticketType: "ADULT" | "YOUTH"; venueName?: string; venueCity?: string }[];
   appUrl: string;
 }
 
@@ -280,6 +297,9 @@ export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
   const ticketAssets = await Promise.all(
     p.tickets.map(async (t) => ({
       ticketNumber: t.ticketNumber,
+      ticketType: t.ticketType,
+      venueName: t.venueName ?? p.venueName,
+      venueCity: t.venueCity ?? p.venueCity,
       qrBuffer: await QRCode.toBuffer(t.ticketNumber, {
         width: 400,
         margin: 2,
@@ -295,8 +315,6 @@ export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
     category: p.category,
     eventName: p.eventName,
     eventDate: p.eventDate,
-    venueName: p.venueName,
-    venueCity: p.venueCity,
   });
 
   const ticketsHtml = `
@@ -354,6 +372,7 @@ export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
 interface FinanceNotificationParams {
   to: string;
   registrationId: string;
+  registrantName: string;
   amount: number;
   totalPaid: number;
   remainingBalance: number;
@@ -365,6 +384,7 @@ export async function sendFinanceNotificationEmail(p: FinanceNotificationParams)
 
   const vars: Record<string, string> = {
     registrationId: p.registrationId,
+    registrantName: p.registrantName,
     amount: `$${p.amount.toFixed(2)}`,
     totalPaid: `$${p.totalPaid.toFixed(2)}`,
     remainingBalance: `$${p.remainingBalance.toFixed(2)}`,
@@ -374,6 +394,7 @@ export async function sendFinanceNotificationEmail(p: FinanceNotificationParams)
   const dataBlocks: string[] = [
     `<table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;">
       ${pill("Registration", p.registrationId)}
+      ${pill("Church / Individual", p.registrantName)}
       ${pill("Amount Logged", `$${p.amount.toFixed(2)}`)}
       ${pill("Total Paid", `$${p.totalPaid.toFixed(2)}`)}
       ${pill("Remaining Balance", `$${p.remainingBalance.toFixed(2)}`)}

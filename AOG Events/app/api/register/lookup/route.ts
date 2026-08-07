@@ -78,8 +78,6 @@ export async function POST(request: Request) {
         adults: registration.adults,
         youth: registration.youth,
         kids: registration.kids,
-        numberOfTickets: registration.numberOfAttendees,
-        maxTicketsPerReg: catInfo?.maxTicketsPerReg ?? null,
       },
     });
   } catch (error: any) {

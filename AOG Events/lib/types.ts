@@ -3,10 +3,14 @@ export type RegistrationCategory =
   | "large-church"
   | "medium-church"
   | "small-church"
-  | "church-plant"
-  | "world-fijian-congress"
-  | "wfc-partners"
-  | "individual";
+  | "individual"
+  | "overseas-delegates";
+
+interface AgeCaps {
+  adults: number;
+  youth: number;
+  kids: number;
+}
 
 export interface CategoryInfo {
   id: RegistrationCategory;
@@ -15,12 +19,16 @@ export interface CategoryInfo {
   type: "church" | "individual";
   icon: string;
   fee: number;
-  registrationLimit: number | null; // null = no registration count cap
-  ticketPool: number;               // total seats shared across all registrations
-  maxTicketsPerReg: number;         // max tickets one registration can request
+  // Max attendees of each type on a SINGLE registration — set for church-tier
+  // categories, where the ceiling on total attendance is venue capacity, not
+  // an aggregate pool (any number of churches may register within a tier).
+  perRegCap: AgeCaps | null;
+  // Aggregate cap shared across ALL registrations in the category — set for
+  // Individual/Overseas Delegates instead of a per-registration cap.
+  pool: AgeCaps | null;
   /**
    * Code used in the reference number formula: AG100-{churchId}{categoryCode}{total}.
-   * Spec only defined SM/MD/VL/OS/IN/MI — LG and CP are our provisional extensions
+   * Spec only defined SM/MD/VL/OS/IN/MI — LG and OD are our provisional extensions
    * for categories the client's spec didn't anticipate. Pending client sign-off.
    */
   categoryCode: string;
@@ -30,86 +38,46 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
   {
     id: "very-large-church",
     name: "Very Large Church",
-    description: "Churches with 500+ members",
+    description: "Churches with 300+ members",
     type: "church",
     icon: "building",
     fee: 10000,
-    registrationLimit: 5,
-    ticketPool: 2500,
-    maxTicketsPerReg: 2500,
+    perRegCap: { adults: 500, youth: 550, kids: 600 },
+    pool: null,
     categoryCode: "VL",
   },
   {
     id: "large-church",
     name: "Large Church",
-    description: "Churches with 200-499 members",
+    description: "Churches with 101-300 members",
     type: "church",
     icon: "building",
     fee: 5000,
-    registrationLimit: 50,
-    ticketPool: 3500,
-    maxTicketsPerReg: 3500,
+    perRegCap: { adults: 110, youth: 100, kids: 55 },
+    pool: null,
     categoryCode: "LG",
   },
   {
     id: "medium-church",
     name: "Medium Church",
-    description: "Churches with 100-199 members",
+    description: "Churches with 51-100 members",
     type: "church",
     icon: "building",
     fee: 3000,
-    registrationLimit: 132,
-    ticketPool: 6000,
-    maxTicketsPerReg: 6000,
+    perRegCap: { adults: 31, youth: 35, kids: 30 },
+    pool: null,
     categoryCode: "MD",
   },
   {
     id: "small-church",
     name: "Small Church",
-    description: "Churches with 50-99 members",
+    description: "Churches with 25-50 members",
     type: "church",
     icon: "building",
     fee: 1000,
-    registrationLimit: 175,
-    ticketPool: 4000,
-    maxTicketsPerReg: 4000,
+    perRegCap: { adults: 15, youth: 15, kids: 20 },
+    pool: null,
     categoryCode: "SM",
-  },
-  {
-    id: "church-plant",
-    name: "Church Plant",
-    description: "New church plants under 50 members",
-    type: "church",
-    icon: "sprout",
-    fee: 500,
-    registrationLimit: 38,
-    ticketPool: 1000,
-    maxTicketsPerReg: 1000,
-    categoryCode: "CP",
-  },
-  {
-    id: "world-fijian-congress",
-    name: "World Fijian Congress",
-    description: "Overseas Network representatives",
-    type: "church",
-    icon: "globe",
-    fee: 0,
-    registrationLimit: 5,
-    ticketPool: 1500,
-    maxTicketsPerReg: 1500,
-    categoryCode: "OS",
-  },
-  {
-    id: "wfc-partners",
-    name: "WFC Partners",
-    description: "Missionaries & Partners",
-    type: "individual",
-    icon: "users",
-    fee: 0,
-    registrationLimit: null,
-    ticketPool: 500,
-    maxTicketsPerReg: 500,
-    categoryCode: "MI",
   },
   {
     id: "individual",
@@ -118,10 +86,20 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     type: "individual",
     icon: "user",
     fee: 100,
-    registrationLimit: null,
-    ticketPool: 1000,
-    maxTicketsPerReg: 10,
+    perRegCap: null,
+    pool: { adults: 1000, youth: 500, kids: 10 },
     categoryCode: "IN",
+  },
+  {
+    id: "overseas-delegates",
+    name: "Overseas Delegates",
+    description: "International guests and delegates",
+    type: "individual",
+    icon: "globe",
+    fee: 0, // Not specified in the client's matrix — pending confirmation.
+    perRegCap: null,
+    pool: { adults: 1000, youth: 500, kids: 100 },
+    categoryCode: "OD",
   },
 ];
 
@@ -140,13 +118,11 @@ export interface GlossaryTerm {
 }
 
 export const GLOSSARY_TERMS: GlossaryTerm[] = [
-  { term: "Small Church", definition: "AG Fiji church with 50–99 members." },
-  { term: "Medium Church", definition: "AG Fiji church with 100–199 members." },
-  { term: "Large Church", definition: "AG Fiji church with 200–499 members." },
-  { term: "Very Large Church", definition: "AG Fiji church with 500+ members." },
-  { term: "Church Plant", definition: "A new church under 50 members." },
-  { term: "World Fijian Congress (WFC)", definition: "Overseas Fijian church network representatives — Australia, New Zealand, USA, and Great Britain." },
-  { term: "AGFJ Missionaries", definition: "Missionaries and partners affiliated with AG Fiji serving overseas." },
+  { term: "Small Church", definition: "AG Fiji church with 25–50 members." },
+  { term: "Medium Church", definition: "AG Fiji church with 51–100 members." },
+  { term: "Large Church", definition: "AG Fiji church with 101–300 members." },
+  { term: "Very Large Church", definition: "AG Fiji church with 300+ members." },
+  { term: "Overseas Delegates", definition: "International guests and delegates attending from outside Fiji." },
   { term: "Individual", definition: "Personal registration for international guests or anyone who doesn't fit a local AG Fiji church category." },
   { term: "Adults", definition: "Attendees aged 26 and over." },
   { term: "NextGen / Youth", definition: `Attendees aged ${YOUTH_AGE_RANGE}.` },

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CategoryInfo } from "@/lib/types";
+import { CategoryInfo, YOUTH_AGE_RANGE, KIDS_AGE_RANGE } from "@/lib/types";
 import { PaymentTypeSelector } from "./payment-type-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
-import { User, CreditCard, Minus, Plus, Loader2 } from "lucide-react";
+import { AttendeeCountStepper } from "@/components/attendee-count-stepper";
+import { User, CreditCard, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { loadAnzScript, initAnzPayment } from "@/lib/anz-egate-client";
 import { TurnstileWidget } from "@/components/turnstile-widget";
@@ -17,7 +18,6 @@ interface IndividualRegistrationFormProps {
   onCancel: () => void;
   onSubmit: (data: unknown) => void;
   eventId?: string;
-  stepperMax?: number;
 }
 
 export function IndividualRegistrationForm({
@@ -26,15 +26,10 @@ export function IndividualRegistrationForm({
   onCancel,
   onSubmit,
   eventId,
-  stepperMax,
 }: IndividualRegistrationFormProps) {
   const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const maxTickets = stepperMax !== undefined
-    ? Math.min(category.maxTicketsPerReg, stepperMax)
-    : category.maxTicketsPerReg;
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -44,7 +39,10 @@ export function IndividualRegistrationForm({
     church: "",
     paymentMethod: "" as "online" | "bank-transfer" | "",
   });
-  const [numberOfTickets, setNumberOfTickets] = useState(1);
+  const [adults, setAdults] = useState(1);
+  const [youth, setYouth] = useState(0);
+  const [kids, setKids] = useState(0);
+  const numberOfTickets = adults + youth + kids;
   const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
   const [installmentCount, setInstallmentCount] = useState(5);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -52,12 +50,13 @@ export function IndividualRegistrationForm({
   const updateFormData = (field: string, value: string) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-  const changeTickets = (delta: number) =>
-    setNumberOfTickets((n) => Math.max(1, Math.min(maxTickets, n + delta)));
-
   const totalFee = category.fee * numberOfTickets;
 
-  const isStep1Valid = formData.firstName && formData.lastName && formData.email && formData.phone;
+  const overAttendeeLimit = category.pool
+    ? adults > category.pool.adults || youth > category.pool.youth || kids > category.pool.kids
+    : false;
+
+  const isStep1Valid = formData.firstName && formData.lastName && formData.email && formData.phone && numberOfTickets > 0;
 
   const handleSubmit = async () => {
     setIsProcessing(true);
@@ -72,6 +71,9 @@ export function IndividualRegistrationForm({
           type: "individual",
           fee: totalFee,
           numberOfTickets,
+          adults,
+          youth,
+          kids,
           paymentType: formData.paymentMethod === "online" ? "full" : paymentType,
           installmentCount: formData.paymentMethod !== "online" && paymentType === "partial" ? installmentCount : null,
           eventId,
@@ -198,34 +200,34 @@ export function IndividualRegistrationForm({
             </Field>
           </FieldGroup>
 
-          {/* Ticket Quantity */}
+          {/* Attendee counts */}
           <div className="p-5 rounded-xl border-2 border-border bg-secondary/30 space-y-3">
             <div>
-              <FieldLabel>Number of Tickets</FieldLabel>
+              <FieldLabel>Attendees</FieldLabel>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Including yourself — register friends & family (max {maxTickets})
+                Including yourself — register friends & family, by age group
               </p>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <Button type="button" variant="outline" size="icon" onClick={() => changeTickets(-1)}
-                  disabled={numberOfTickets <= 1} className="h-10 w-10 rounded-full">
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <div className="text-center min-w-[60px]">
-                  <div className="text-3xl font-bold text-foreground">{numberOfTickets}</div>
-                  <div className="text-xs text-muted-foreground">ticket{numberOfTickets > 1 ? "s" : ""}</div>
-                </div>
-                <Button type="button" variant="outline" size="icon" onClick={() => changeTickets(1)}
-                  disabled={numberOfTickets >= maxTickets} className="h-10 w-10 rounded-full">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <AttendeeCountStepper id="adults" label="Adults" value={adults} onChange={setAdults} />
+              <AttendeeCountStepper id="youth" label={`NextGen / Youth (${YOUTH_AGE_RANGE})`} value={youth} onChange={setYouth} />
+              <AttendeeCountStepper id="kids" label={`Kids (${KIDS_AGE_RANGE})`} value={kids} onChange={setKids} />
             </div>
+            <div className="flex items-center justify-between text-sm pt-1 border-t border-border">
+              <span className="text-muted-foreground">Total Attendees</span>
+              <span className={cn("font-semibold", overAttendeeLimit ? "text-destructive" : "text-foreground")}>
+                {numberOfTickets.toLocaleString()}
+              </span>
+            </div>
+            {overAttendeeLimit && (
+              <p className="text-destructive text-xs">
+                This exceeds the remaining spots for {category.name}. Please reduce your numbers or try again later.
+              </p>
+            )}
             {/* Live fee calculation */}
             <div className="space-y-1 pt-2 border-t border-border text-sm">
               <div className="flex justify-between text-muted-foreground">
-                <span>${category.fee} FJD × {numberOfTickets} ticket{numberOfTickets > 1 ? "s" : ""}</span>
+                <span>${category.fee} FJD × {numberOfTickets} ticket{numberOfTickets !== 1 ? "s" : ""}</span>
                 <span>${totalFee.toLocaleString()} FJD</span>
               </div>
               <div className="flex justify-between font-semibold">
@@ -240,7 +242,7 @@ export function IndividualRegistrationForm({
               <Button variant="outline" onClick={onBack}>Back</Button>
               <Button variant="ghost" onClick={onCancel}>Cancel</Button>
             </div>
-            <Button onClick={() => setStep(2)} disabled={!isStep1Valid}>Continue to Payment</Button>
+            <Button onClick={() => setStep(2)} disabled={!isStep1Valid || overAttendeeLimit}>Continue to Payment</Button>
           </div>
         </div>
       )}

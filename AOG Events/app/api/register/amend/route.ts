@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { verifyAmendToken } from "@/lib/amend-token";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
 import { autoAssignVenues, applyVenueAllocations, releaseVenueAllocations } from "@/lib/venue-assignment";
+import { checkCategoryCapacity, RegistrationCapacityError } from "@/lib/create-registration";
 
 // POST /api/register/amend — the write side of the public self-amend flow.
 // Requires a token minted by /api/register/lookup (proves the registrant
@@ -10,9 +11,9 @@ import { autoAssignVenues, applyVenueAllocations, releaseVenueAllocations } from
 // info again, so this isn't a second guessable auth surface.
 //
 // Contact-detail fields are always editable. Headcount fields (adults/
-// youth/kids for church registrations, numberOfTickets for individual) are
-// locked once payment is COMPLETED — a genuine post-payment headcount change
-// goes through admin/finance manually, per the confirmed product decision.
+// youth/kids — every registration type tracks these now) are locked once
+// payment is COMPLETED — a genuine post-payment headcount change goes
+// through admin/finance manually, per the confirmed product decision.
 export async function POST(request: Request) {
   try {
     const data = await request.json();
@@ -60,74 +61,41 @@ export async function POST(request: Request) {
     const result = await prisma.$transaction(async (tx) => {
       const headcountUpdates: Record<string, unknown> = {};
 
-      if (wantsHeadcountChange && registration.type === "CHURCH") {
+      if (wantsHeadcountChange) {
         const adults = Math.max(0, parseInt(String(data.adults ?? registration.adults), 10) || 0);
         const youth = Math.max(0, parseInt(String(data.youth ?? registration.youth), 10) || 0);
         const kids = Math.max(0, parseInt(String(data.kids ?? registration.kids), 10) || 0);
         const total = adults + youth + kids;
 
         if (total <= 0) throw new Error("VALIDATION: Attendee count must be greater than zero.");
-        if (catInfo && total > catInfo.maxTicketsPerReg) {
-          throw new Error(`VALIDATION: This exceeds the ${catInfo.maxTicketsPerReg.toLocaleString()} attendee limit for ${catInfo.name}.`);
-        }
 
         if (catInfo) {
-          const ticketQty = adults + youth; // kids don't receive tickets, matches original registration logic
-          const currentTicketQty = registration.adults + registration.youth;
-          const delta = ticketQty - currentTicketQty;
-          if (delta > 0) {
-            const activeRegs = await tx.registration.findMany({
-              where: { category: registration.category, paymentStatus: { not: "CANCELLED" }, id: { not: registration.id } },
-              select: { type: true, adults: true, youth: true, numberOfAttendees: true },
-            });
-            const reservedSeats = activeRegs.reduce(
-              (sum, r) => sum + (r.type === "CHURCH" ? r.adults + r.youth : r.numberOfAttendees),
-              0
-            );
-            const remaining = catInfo.ticketPool - reservedSeats - currentTicketQty;
-            if (delta > remaining) {
-              throw new Error(`VALIDATION: Only ${Math.max(0, remaining)} additional seat(s) remain in the ${catInfo.name} pool.`);
-            }
+          try {
+            await checkCategoryCapacity(tx, catInfo, { adults, youth, kids }, registration.id);
+          } catch (err) {
+            if (err instanceof RegistrationCapacityError) throw new Error(`VALIDATION: ${err.message}`);
+            throw err;
           }
         }
 
         // Re-split across venues for the new counts — release what was there
         // and recompute from scratch rather than trying to patch deltas per
         // venue, since a shrink can free up room a growth elsewhere needs.
+        // Throwing here rolls back the release too, since it's all inside
+        // this same transaction — the prior allocation is left untouched.
         await releaseVenueAllocations(tx, registration.id);
-        const { allocations } = await autoAssignVenues(tx, registration.eventId, { adults, youth, kids });
+        const { allocations, warnings } = await autoAssignVenues(tx, registration.eventId, { adults, youth, kids });
+        if (warnings.length > 0) {
+          throw new Error("VALIDATION: This would exceed venue capacity. Please contact the event team for adjustments.");
+        }
         await applyVenueAllocations(tx, registration.id, allocations);
 
-        Object.assign(headcountUpdates, { adults, youth, kids, numberOfAttendees: total });
-      }
-
-      if (wantsHeadcountChange && registration.type === "INDIVIDUAL") {
-        const numberOfTickets = Math.max(1, parseInt(String(data.numberOfTickets), 10) || 1);
-        if (catInfo && numberOfTickets > catInfo.maxTicketsPerReg) {
-          throw new Error(`VALIDATION: This exceeds the ${catInfo.maxTicketsPerReg.toLocaleString()} ticket limit for ${catInfo.name}.`);
-        }
-
-        if (catInfo) {
-          const delta = numberOfTickets - registration.numberOfAttendees;
-          if (delta > 0) {
-            const activeRegs = await tx.registration.findMany({
-              where: { category: registration.category, paymentStatus: { not: "CANCELLED" }, id: { not: registration.id } },
-              select: { type: true, adults: true, youth: true, numberOfAttendees: true },
-            });
-            const reservedSeats = activeRegs.reduce(
-              (sum, r) => sum + (r.type === "CHURCH" ? r.adults + r.youth : r.numberOfAttendees),
-              0
-            );
-            const remaining = catInfo.ticketPool - reservedSeats - registration.numberOfAttendees;
-            if (delta > remaining) {
-              throw new Error(`VALIDATION: Only ${Math.max(0, remaining)} additional seat(s) remain in the ${catInfo.name} pool.`);
-            }
-          }
-        }
-
         Object.assign(headcountUpdates, {
-          numberOfAttendees: numberOfTickets,
-          fee: catInfo ? catInfo.fee * numberOfTickets : registration.fee,
+          adults,
+          youth,
+          kids,
+          numberOfAttendees: total,
+          ...(registration.type === "INDIVIDUAL" && catInfo ? { fee: catInfo.fee * total } : {}),
         });
       }
 

@@ -8,7 +8,7 @@ import { RegistrationSuccess } from "@/components/registration-success";
 import { ChurchAutocomplete, ChurchOption } from "@/components/church-autocomplete";
 import { GlossarySidebar } from "@/components/glossary-sidebar";
 import { REGISTRATION_CATEGORIES, CategoryInfo } from "@/lib/types";
-import { ArrowLeft, CalendarDays, MapPin, Building, Globe, User } from "lucide-react";
+import { ArrowLeft, CalendarDays, MapPin, Building, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Venue {
@@ -34,16 +34,13 @@ interface Props {
   event: Event;
 }
 
-type RegistrationPath = "church" | "individual" | "wfc";
+type RegistrationPath = "church" | "individual";
 type RegistrationStep = "entry" | "category" | "form" | "success";
-
-const WFC_COUNTRIES = ["Australia", "New Zealand", "USA", "United Kingdom"];
 
 export function EventRegistrationClient({ event }: Props) {
   const [step, setStep] = useState<RegistrationStep>("entry");
   const [path, setPath] = useState<RegistrationPath | null>(null);
   const [selectedChurch, setSelectedChurch] = useState<ChurchOption | null>(null);
-  const [wfcCountry, setWfcCountry] = useState(WFC_COUNTRIES[0]);
   const [selectedCategory, setSelectedCategory] = useState<CategoryInfo | null>(null);
   const [registrationData, setRegistrationData] = useState<{
     id: string;
@@ -57,13 +54,13 @@ export function EventRegistrationClient({ event }: Props) {
 
   const categoriesForPath = (() => {
     if (path === "church") {
-      return REGISTRATION_CATEGORIES.filter((c) => c.type === "church" && c.id !== "world-fijian-congress");
-    }
-    if (path === "wfc") {
-      return REGISTRATION_CATEGORIES.filter((c) => c.id === "world-fijian-congress");
+      return REGISTRATION_CATEGORIES.filter((c) => c.type === "church");
     }
     if (path === "individual") {
-      return REGISTRATION_CATEGORIES.filter((c) => c.type === "individual");
+      // Overseas Delegates register manually with the admin team (per client,
+      // 2026-08-07) rather than through this public form — admin can still
+      // tag a registration with this category via CSV import.
+      return REGISTRATION_CATEGORIES.filter((c) => c.type === "individual" && c.id !== "overseas-delegates");
     }
     return [];
   })();
@@ -75,7 +72,7 @@ export function EventRegistrationClient({ event }: Props) {
 
   const handleEntryContinue = () => {
     if (!path) return;
-    if ((path === "church" || path === "wfc") && !selectedChurch) return;
+    if (path === "church" && !selectedChurch) return;
 
     // If we know the church's HQ-reported size, skip straight to the form
     // instead of making them click through a category step for a choice
@@ -169,7 +166,7 @@ export function EventRegistrationClient({ event }: Props) {
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2">
             <button
               onClick={() => { setPath("church"); setSelectedChurch(null); }}
               className={`p-4 rounded-lg border text-left transition-all ${path === "church" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
@@ -183,16 +180,8 @@ export function EventRegistrationClient({ event }: Props) {
               className={`p-4 rounded-lg border text-left transition-all ${path === "individual" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
             >
               <User className="h-5 w-5 text-muted-foreground mb-2" />
-              <p className="font-medium text-foreground">Individual / Missionary</p>
-              <p className="text-sm text-muted-foreground mt-1">International guests, missionaries, or anyone who doesn't fit a local church category.</p>
-            </button>
-            <button
-              onClick={() => { setPath("wfc"); setSelectedChurch(null); }}
-              className={`p-4 rounded-lg border text-left transition-all ${path === "wfc" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
-            >
-              <Globe className="h-5 w-5 text-muted-foreground mb-2" />
-              <p className="font-medium text-foreground">World Fijian Congress</p>
-              <p className="text-sm text-muted-foreground mt-1">Overseas Fijian church network — Australia, New Zealand, USA, Great Britain.</p>
+              <p className="font-medium text-foreground">Individual / Overseas Delegate</p>
+              <p className="text-sm text-muted-foreground mt-1">Personal registration, overseas delegates, or anyone who doesn't fit a local church category.</p>
             </button>
           </div>
 
@@ -203,27 +192,11 @@ export function EventRegistrationClient({ event }: Props) {
             </div>
           )}
 
-          {path === "wfc" && (
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-foreground">Country</p>
-              <div className="flex gap-2 flex-wrap">
-                {WFC_COUNTRIES.map((c) => (
-                  <button key={c} onClick={() => { setWfcCountry(c); setSelectedChurch(null); }}
-                    className={`px-3 py-1.5 rounded-full text-sm border ${wfcCountry === c ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground"}`}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-              <p className="text-sm font-medium text-foreground">Find your church</p>
-              <ChurchAutocomplete value={selectedChurch} onSelect={setSelectedChurch} country={wfcCountry} />
-            </div>
-          )}
-
           {path && (
             <div className="pt-2">
               <Button
                 onClick={handleEntryContinue}
-                disabled={(path === "church" || path === "wfc") && !selectedChurch}
+                disabled={path === "church" && !selectedChurch}
                 className="w-full bg-brand-orange text-brand-white hover:bg-brand-orange/90"
                 size="lg"
               >

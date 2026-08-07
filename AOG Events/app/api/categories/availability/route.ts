@@ -3,75 +3,54 @@ import { NextResponse } from "next/server";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
 
 // GET /api/categories/availability
-// Returns live registration counts and ticket pool usage per category
+// Returns live per-type (adults/youth/kids) stepper maxima and open/closed
+// status per category. Deliberately doesn't surface which venue or bucket
+// is behind a "closed" state — registrants only see that a cap exists.
 export async function GET() {
   try {
-    const [regCounts, ticketCounts] = await Promise.all([
-      // Registration counts per category
-      prisma.registration.groupBy({
-        by: ["category"],
-        _count: { id: true },
-        where: { paymentStatus: "COMPLETED" },
-      }),
-      // Tickets issued per category (join via registration)
-      prisma.ticket.groupBy({
-        by: ["registrationId"],
-        _count: { id: true },
-        where: { status: "ACTIVE" },
-      }),
-    ]);
-
-    // Build a map: registrationId → ticket count
-    const ticketsPerReg = new Map(
-      ticketCounts.map((t) => [t.registrationId, t._count.id])
-    );
-
-    // To get tickets per category, fetch registrations and sum
-    const registrations = await prisma.registration.findMany({
-      where: { paymentStatus: "COMPLETED" },
-      select: { id: true, category: true },
+    const activeRegs = await prisma.registration.findMany({
+      where: { paymentStatus: { not: "CANCELLED" } },
+      select: { category: true, adults: true, youth: true, kids: true },
     });
 
-    const ticketsByCategory = new Map<string, number>();
-    for (const reg of registrations) {
-      const count = ticketsPerReg.get(reg.id) ?? 0;
-      ticketsByCategory.set(reg.category, (ticketsByCategory.get(reg.category) ?? 0) + count);
+    const usedByCategory = new Map<string, { adults: number; youth: number; kids: number }>();
+    for (const reg of activeRegs) {
+      const acc = usedByCategory.get(reg.category) ?? { adults: 0, youth: 0, kids: 0 };
+      acc.adults += reg.adults;
+      acc.youth += reg.youth;
+      acc.kids += reg.kids;
+      usedByCategory.set(reg.category, acc);
     }
 
-    const regCountMap = new Map(regCounts.map((r) => [r.category, r._count.id]));
-
     const availability = REGISTRATION_CATEGORIES.map((cat) => {
-      const registrationCount = regCountMap.get(cat.id) ?? 0;
-      const ticketsClaimed = ticketsByCategory.get(cat.id) ?? 0;
-      const poolRemaining = Math.max(0, cat.ticketPool - ticketsClaimed);
-      const registrationsRemaining =
-        cat.registrationLimit !== null
-          ? Math.max(0, cat.registrationLimit - registrationCount)
-          : null;
+      if (cat.perRegCap) {
+        // Ceiling is venue capacity, not an aggregate pool — a per-registration
+        // cap is always "open" from the category's own point of view.
+        return {
+          id: cat.id,
+          stepperMaxAdults: cat.perRegCap.adults,
+          stepperMaxYouth: cat.perRegCap.youth,
+          stepperMaxKids: cat.perRegCap.kids,
+          isOpen: true,
+          closedReason: null,
+        };
+      }
 
-      const isRegFull =
-        cat.registrationLimit !== null && registrationCount >= cat.registrationLimit;
-      const isPoolFull = ticketsClaimed >= cat.ticketPool;
-      const isOpen = !isRegFull && !isPoolFull;
+      const used = usedByCategory.get(cat.id) ?? { adults: 0, youth: 0, kids: 0 };
+      const remaining = {
+        adults: Math.max(0, (cat.pool?.adults ?? 0) - used.adults),
+        youth: Math.max(0, (cat.pool?.youth ?? 0) - used.youth),
+        kids: Math.max(0, (cat.pool?.kids ?? 0) - used.kids),
+      };
+      const isOpen = remaining.adults > 0 || remaining.youth > 0 || remaining.kids > 0;
 
       return {
         id: cat.id,
-        registrationCount,
-        registrationLimit: cat.registrationLimit,
-        registrationsRemaining,
-        ticketsClaimed,
-        ticketPool: cat.ticketPool,
-        poolRemaining,
-        // Dynamic max for the stepper: min(maxTicketsPerReg, poolRemaining)
-        stepperMax: Math.min(cat.maxTicketsPerReg, poolRemaining),
-        isRegFull,
-        isPoolFull,
+        stepperMaxAdults: remaining.adults,
+        stepperMaxYouth: remaining.youth,
+        stepperMaxKids: remaining.kids,
         isOpen,
-        closedReason: isRegFull
-          ? `All ${cat.registrationLimit} registrations for this category have been received`
-          : isPoolFull
-          ? `All ${cat.ticketPool} tickets for this category have been allocated`
-          : null,
+        closedReason: isOpen ? null : `All spots for ${cat.name} have been allocated`,
       };
     });
 
