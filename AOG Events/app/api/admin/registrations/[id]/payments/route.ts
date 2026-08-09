@@ -61,7 +61,12 @@ export async function POST(
           registrationId: id,
           amount: parseFloat(String(amount)),
           entryType: entryType === "INSTALLMENT" ? "INSTALLMENT" : "FULL",
-          method: method === "CASH" ? "CASH" : method === "ONLINE" ? "ONLINE" : "BANK_TRANSFER",
+          method:
+            method === "CASH" ? "CASH"
+            : method === "ONLINE" ? "ONLINE"
+            : method === "MPAISA" ? "MPAISA"
+            : method === "WORLD_REMIT" ? "WORLD_REMIT"
+            : "BANK_TRANSFER",
           referenceNote: referenceNote || null,
           installmentNo: installmentNo ? parseInt(String(installmentNo), 10) : null,
           confirmedById: currentUser.id,

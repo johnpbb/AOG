@@ -98,7 +98,7 @@ export default function VerifyPage() {
       <nav className="brand-nav sticky">
         <div className="max-w-[1280px] mx-auto px-6 flex items-center h-[68px]">
           <Link href="/">
-            <Image src="/logos/agfj100-dark.png" alt="AGFJ100" width={160} height={48} className="object-contain" priority />
+            <Image src="/logos/agfj100-dark.png" alt="Assemblies of God" width={52} height={52} className="object-contain" priority />
           </Link>
         </div>
       </nav>
@@ -117,7 +117,7 @@ export default function VerifyPage() {
       {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
       <footer className="bg-[#050505] border-t border-brand-orange/12 py-[44px] px-6">
         <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-5 text-center">
-          <Image src="/logos/agfj100-dark.png" alt="AGFJ100" width={130} height={42} className="object-contain opacity-70" />
+          <Image src="/logos/agfj100-dark.png" alt="Assemblies of God" width={42} height={42} className="object-contain opacity-70" />
           <p className="text-xs text-white/30">© 2026 Assemblies of God, Fiji. All rights reserved.</p>
           <div className="flex gap-7 text-[13px]">
             <Link href="/admin" className="text-white/35 no-underline">Admin</Link>

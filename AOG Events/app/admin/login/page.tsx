@@ -41,9 +41,9 @@ export default function AdminLoginPage() {
         <div className="flex justify-center mb-8">
           <Image
             src="/logos/agfj100-light.png"
-            alt="AGFJ100"
-            width={160}
-            height={48}
+            alt="Assemblies of God"
+            width={72}
+            height={72}
             className="object-contain"
             priority
           />

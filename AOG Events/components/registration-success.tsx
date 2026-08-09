@@ -12,12 +12,17 @@ interface BankDetails {
   bankAccountName: string;
   bankAccountNumber: string;
   bankBranch: string;
+  mpaisaNumber: string;
+  mpaisaName: string;
+  worldRemitInstructions: string;
 }
 
 interface RegistrationSuccessProps {
   registrationId: string;
   email: string;
-  paymentMethod?: "bank-transfer" | "online" | string;
+  // "online" (ANZ eGate) is disabled for now — kept only so the completed
+  // screen still renders correctly for any older/legacy registration.
+  paymentMethod?: "bank-transfer" | "mpaisa" | "world-remit" | "online" | string;
   fee?: number;
   numberOfTickets?: number;
   paymentType?: string;
@@ -33,15 +38,21 @@ const installmentDeadlineLabel = INSTALLMENT_DEADLINE.toLocaleDateString("en-FJ"
 
 // ── Pending (bank transfer) variant ─────────────────────────────────────────
 
+const emptyBankDetails: BankDetails = {
+  bankName: "", bankAccountName: "", bankAccountNumber: "", bankBranch: "",
+  mpaisaNumber: "", mpaisaName: "", worldRemitInstructions: "",
+};
+
 function PendingScreen({
   registrationId,
   email,
+  paymentMethod,
   fee,
   numberOfTickets,
   paymentType,
   installmentCount,
   onNewRegistration,
-}: Omit<RegistrationSuccessProps, "paymentMethod">) {
+}: RegistrationSuccessProps) {
   const [bank, setBank] = useState<BankDetails | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -49,7 +60,7 @@ function PendingScreen({
     fetch("/api/bank-details")
       .then((r) => r.json())
       .then(setBank)
-      .catch(() => setBank({ bankName: "", bankAccountName: "", bankAccountNumber: "", bankBranch: "" }));
+      .catch(() => setBank(emptyBankDetails));
   }, []);
 
   function copyRef() {
@@ -60,6 +71,8 @@ function PendingScreen({
   }
 
   const hasBankDetails = bank && bank.bankAccountNumber;
+  const hasMpaisaDetails = bank && bank.mpaisaNumber;
+  const hasWorldRemitDetails = bank && bank.worldRemitInstructions;
 
   return (
     <div className="text-center space-y-6 py-8">
@@ -91,26 +104,64 @@ function PendingScreen({
       {/* FAQ #1 — How can I pay */}
       <div className="max-w-sm mx-auto rounded-xl border border-border bg-card p-5 text-left space-y-3">
         <p className="text-sm font-semibold text-foreground">1. How can I pay for my registration?</p>
-        {hasBankDetails ? (
+
+        {paymentMethod === "mpaisa" ? (
+          hasMpaisaDetails ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">M-PAiSA Number</span>
+                <span className="font-mono font-semibold text-foreground">{bank!.mpaisaNumber}</span>
+              </div>
+              {bank!.mpaisaName && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Name</span>
+                  <span className="font-medium text-foreground">{bank!.mpaisaName}</span>
+                </div>
+              )}
+              {fee !== undefined && (
+                <div className="flex justify-between border-t border-border pt-2">
+                  <span className="text-muted-foreground">Amount (FJD)</span>
+                  <span className="font-bold text-foreground">${fee.toLocaleString()}.00</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">M-PAiSA details will be emailed to you shortly.</p>
+          )
+        ) : paymentMethod === "world-remit" ? (
+          hasWorldRemitDetails ? (
+            <div className="space-y-2 text-sm">
+              <p className="text-muted-foreground whitespace-pre-line">{bank!.worldRemitInstructions}</p>
+              {fee !== undefined && (
+                <div className="flex justify-between border-t border-border pt-2">
+                  <span className="text-muted-foreground">Amount (FJD)</span>
+                  <span className="font-bold text-foreground">${fee.toLocaleString()}.00</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">World Remit transfer instructions will be emailed to you shortly.</p>
+          )
+        ) : hasBankDetails ? (
           <div className="space-y-2 text-sm">
-            {bank.bankName && (
+            {bank!.bankName && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Bank</span>
-                <span className="font-medium text-foreground">{bank.bankName}</span>
+                <span className="font-medium text-foreground">{bank!.bankName}</span>
               </div>
             )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Account Name</span>
-              <span className="font-medium text-foreground">{bank.bankAccountName}</span>
+              <span className="font-medium text-foreground">{bank!.bankAccountName}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Account Number</span>
-              <span className="font-mono font-semibold text-foreground">{bank.bankAccountNumber}</span>
+              <span className="font-mono font-semibold text-foreground">{bank!.bankAccountNumber}</span>
             </div>
-            {bank.bankBranch && (
+            {bank!.bankBranch && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Branch</span>
-                <span className="font-medium text-foreground">{bank.bankBranch}</span>
+                <span className="font-medium text-foreground">{bank!.bankBranch}</span>
               </div>
             )}
             {fee !== undefined && (
@@ -123,6 +174,7 @@ function PendingScreen({
         ) : (
           <p className="text-sm text-muted-foreground">Bank details will be emailed to you shortly.</p>
         )}
+
         <p className="text-sm text-muted-foreground">
           Or pay cash at your nearest AGFJ Divisional Office or Headquarters.
         </p>
@@ -250,8 +302,11 @@ function CompletedScreen({
 // ── Main export ──────────────────────────────────────────────────────────────
 
 export function RegistrationSuccess(props: RegistrationSuccessProps) {
-  if (props.paymentMethod === "bank-transfer") {
-    return <PendingScreen {...props} />;
+  // Online payment is disabled for now — every method (bank transfer,
+  // M-PAiSA, World Remit) is manually verified, so all of them land on the
+  // pending screen. "online" is kept only for any pre-existing legacy row.
+  if (props.paymentMethod === "online") {
+    return <CompletedScreen {...props} />;
   }
-  return <CompletedScreen {...props} />;
+  return <PendingScreen {...props} />;
 }

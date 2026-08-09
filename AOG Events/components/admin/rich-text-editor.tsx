@@ -8,6 +8,10 @@ import Color from "@tiptap/extension-color";
 import Link from "@tiptap/extension-link";
 import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Table } from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableHeader from "@tiptap/extension-table-header";
+import TableCell from "@tiptap/extension-table-cell";
 import { useEffect, useCallback } from "react";
 import {
   Bold,
@@ -25,6 +29,10 @@ import {
   Link2,
   Link2Off,
   RemoveFormatting,
+  Table as TableIcon,
+  Rows3,
+  Columns3,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -85,6 +93,10 @@ export function RichTextEditor({
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: "noopener noreferrer" } }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Placeholder.configure({ placeholder }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: value,
     onUpdate({ editor }) {
@@ -171,6 +183,29 @@ export function RichTextEditor({
 
         <Divider />
 
+        <ToolbarButton
+          onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+          active={editor.isActive("table")}
+          title="Insert table"
+        >
+          <TableIcon className="h-3.5 w-3.5" />
+        </ToolbarButton>
+        {editor.isActive("table") && (
+          <>
+            <ToolbarButton onClick={() => editor.chain().focus().addRowAfter().run()} title="Add row">
+              <Rows3 className="h-3.5 w-3.5" />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().addColumnAfter().run()} title="Add column">
+              <Columns3 className="h-3.5 w-3.5" />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().deleteTable().run()} title="Delete table">
+              <Trash2 className="h-3.5 w-3.5" />
+            </ToolbarButton>
+          </>
+        )}
+
+        <Divider />
+
         <ToolbarButton onClick={setLink} active={editor.isActive("link")} title="Insert link">
           <Link2 className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -218,6 +253,10 @@ export function RichTextEditor({
         .prose-editor em { font-style: italic; }
         .prose-editor u { text-decoration: underline; }
         .prose-editor s { text-decoration: line-through; }
+        .prose-editor table { border-collapse: collapse; width: 100%; margin: 0 0 10px; table-layout: fixed; }
+        .prose-editor th, .prose-editor td { border: 1px solid hsl(var(--border)); padding: 6px 10px; position: relative; vertical-align: top; }
+        .prose-editor th { background: hsl(var(--secondary)); font-weight: 600; text-align: left; }
+        .prose-editor .selectedCell { background: hsl(var(--primary) / 0.12); }
         .prose-editor p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);
           float: left;

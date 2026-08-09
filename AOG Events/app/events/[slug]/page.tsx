@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
-import { ArrowRight, ArrowLeft, Calendar, MapPin, Users, Building2, Clock } from "lucide-react";
+import { ArrowRight, ArrowLeft, Calendar, MapPin, Users, Building2 } from "lucide-react";
 import { format } from "date-fns";
+import { sanitizeRichText } from "@/lib/sanitize-html";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export default async function EventPage({ params }: Props) {
   const totalRegistered = event.venues.reduce((s, v) => s + v.currentRegistrations, 0);
   const pct = totalCapacity > 0 ? Math.round((totalRegistered / totalCapacity) * 100) : 0;
   const seatsLeft = totalCapacity - totalRegistered;
+  const scheduleHtml = sanitizeRichText(event.scheduleTable);
 
   return (
     <div className="bg-brand-black text-brand-white min-h-screen">
@@ -39,7 +41,7 @@ export default async function EventPage({ params }: Props) {
       <nav className="brand-nav fixed">
         <div className="max-w-[1280px] mx-auto px-6 flex items-center justify-between h-[68px]">
           <Link href="/">
-            <Image src="/logos/agfj100-light.png" alt="AGFJ100" width={160} height={48} className="object-contain" priority />
+            <Image src="/logos/agfj100-light.png" alt="Assemblies of God" width={52} height={52} className="object-contain" priority />
           </Link>
           <Link
             href={`/events/${slug}/register`}
@@ -57,7 +59,7 @@ export default async function EventPage({ params }: Props) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 px-10 pb-9">
             <div className="max-w-[1200px] mx-auto">
-              <h1 className="text-[clamp(28px,4vw,48px)] font-extrabold text-brand-white leading-[1.2] font-boldonse">
+              <h1 className="text-[clamp(28px,4vw,48px)] font-extrabold text-brand-white leading-[1.35] font-boldonse">
                 {event.name}
               </h1>
             </div>
@@ -67,7 +69,7 @@ export default async function EventPage({ params }: Props) {
         <div className="mt-[68px] h-[260px] tapa-bg relative flex items-center">
           <div className="absolute inset-0 bg-black/55" />
           <div className="max-w-[1200px] mx-auto px-10 relative z-10">
-            <h1 className="text-[clamp(28px,4vw,48px)] font-extrabold text-brand-white leading-[1.2] font-boldonse">
+            <h1 className="text-[clamp(28px,4vw,48px)] font-extrabold text-brand-white leading-[1.35] font-boldonse">
               {event.name}
             </h1>
           </div>
@@ -85,10 +87,14 @@ export default async function EventPage({ params }: Props) {
 
           {/* ── Main ────────────────────────────────────────────────────────── */}
           <div>
-            {event.description && (
-              <p className="text-base text-white/65 leading-[1.8] mb-12 whitespace-pre-line">
-                {event.description}
-              </p>
+            {scheduleHtml && (
+              <div className="mb-12">
+                <h2 className="text-xl font-bold text-brand-white mb-5">Event Schedule</h2>
+                <div
+                  className="prose-dark overflow-x-auto rounded-xl border border-white/10 p-5"
+                  dangerouslySetInnerHTML={{ __html: scheduleHtml }}
+                />
+              </div>
             )}
 
             {event.venues.length > 0 && (
@@ -135,7 +141,7 @@ export default async function EventPage({ params }: Props) {
           {/* ── Sidebar ─────────────────────────────────────────────────────── */}
           <div className="lg:sticky lg:top-[92px]">
             <div className="bg-white/[0.04] border border-brand-orange/20 rounded-2xl p-7">
-              <h2 className="text-base font-bold text-brand-white mb-6">Event Details</h2>
+              <h2 className="text-base font-bold text-brand-white mb-6">Event Overview</h2>
 
               <div className="flex flex-col gap-[18px]">
                 {event.startDate && (
@@ -151,15 +157,6 @@ export default async function EventPage({ params }: Props) {
                         </p>
                       )}
                     </div>
-                  </div>
-                )}
-
-                {event.startDate && (
-                  <div className="flex items-center gap-3">
-                    <Clock size={16} color="var(--brand-orange)" className="shrink-0" />
-                    <p className="text-sm text-brand-white">
-                      {format(new Date(event.startDate), "h:mm a")}
-                    </p>
                   </div>
                 )}
 
@@ -199,7 +196,7 @@ export default async function EventPage({ params }: Props) {
       {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
       <footer className="bg-[#050505] border-t border-brand-orange/12 py-[44px] px-6">
         <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-5 text-center">
-          <Image src="/logos/agfj100-dark.png" alt="AGFJ100" width={130} height={42} className="object-contain opacity-70" />
+          <Image src="/logos/agfj100-dark.png" alt="Assemblies of God" width={42} height={42} className="object-contain opacity-70" />
           <p className="text-xs text-white/30">© 2026 Assemblies of God, Fiji. All rights reserved.</p>
           <div className="flex gap-7 text-[13px]">
             <Link href="/admin" className="text-white/35 no-underline">Admin</Link>

@@ -30,6 +30,10 @@ import {
 import { format } from "date-fns";
 import { RegistrationsCsvImporter } from "./registrations-csv-importer";
 
+// All manual/offline methods eligible for one-click approval — every method
+// except ONLINE (disabled for now) requires the finance team's manual verification.
+const MANUAL_PAYMENT_METHODS = ["BANK_TRANSFER", "MPAISA", "WORLD_REMIT"];
+
 export function RegistrationsList() {
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,7 +242,10 @@ export function RegistrationsList() {
                           <div className="font-medium text-foreground">
                             {reg.formData?.churchName ?? name}
                           </div>
-                          <div className="text-xs text-muted-foreground">{reg.email}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {reg.email}
+                            {reg.category === "overseas-delegates" && formData.country ? ` · ${formData.country}` : ""}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -277,7 +284,7 @@ export function RegistrationsList() {
                               : reg.paymentStatus === "CANCELLED" ? "Cancelled"
                               : "Pending"}
                           </Badge>
-                          {reg.paymentStatus === "PENDING" && reg.paymentMethod === "BANK_TRANSFER" && (
+                          {reg.paymentStatus === "PENDING" && MANUAL_PAYMENT_METHODS.includes(reg.paymentMethod) && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -307,7 +314,7 @@ export function RegistrationsList() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            {reg.paymentStatus === "PENDING" && reg.paymentMethod === "BANK_TRANSFER" && (
+                            {reg.paymentStatus === "PENDING" && MANUAL_PAYMENT_METHODS.includes(reg.paymentMethod) && (
                               <DropdownMenuItem
                                 className="text-green-700 focus:text-green-700"
                                 disabled={approvingId === reg.id}

@@ -193,7 +193,11 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
       contactEmail: input.contactEmail || null,
       eventId: input.eventId,
       fee,
-      paymentMethod: input.paymentMethod === "online" ? "ONLINE" : "BANK_TRANSFER",
+      paymentMethod:
+        input.paymentMethod === "mpaisa" ? "MPAISA"
+        : input.paymentMethod === "world-remit" ? "WORLD_REMIT"
+        : input.paymentMethod === "online" ? "ONLINE"
+        : "BANK_TRANSFER",
       paymentStatus: "PENDING",
       formData: (input.formData || {}) as Prisma.InputJsonValue,
       numberOfAttendees: qty,

@@ -169,6 +169,10 @@ interface PendingEmailParams {
   bankAccountName: string;
   bankAccountNumber: string;
   bankBranch: string;
+  mpaisaNumber?: string;
+  mpaisaName?: string;
+  worldRemitInstructions?: string;
+  paymentMethod?: string;
   eventName: string;
   paymentType?: string;
   installmentCount?: number | null;
@@ -203,7 +207,32 @@ export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
     </table>`,
   ];
 
-  if (p.bankAccountNumber) {
+  if (p.paymentMethod === "mpaisa" && p.mpaisaNumber) {
+    dataBlocks.push(`
+      ${divider()}
+      <p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#ffffff;">M-PAiSA Details</p>
+      <table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;border:1px solid rgba(255,108,0,0.2);">
+        ${pill("M-PAiSA Number", p.mpaisaNumber)}
+        ${p.mpaisaName ? pill("Name", p.mpaisaName) : ""}
+        ${pill("Amount (FJD)", `$${p.fee.toFixed(2)}`)}
+        ${pill("Reference", p.registrationId)}
+      </table>
+      <p style="margin:16px 0 0;font-size:12px;color:rgba(255,255,255,0.4);">
+        ⚠ Please use your Registration ID <strong style="color:#ffffff;">${p.registrationId}</strong> as the payment reference so we can match your transfer.
+      </p>
+    `);
+  } else if (p.paymentMethod === "world-remit" && p.worldRemitInstructions) {
+    dataBlocks.push(`
+      ${divider()}
+      <p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#ffffff;">World Remit to M-PAiSA Details</p>
+      <table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;border:1px solid rgba(255,108,0,0.2);">
+        <tr><td style="color:rgba(255,255,255,0.7);font-size:13px;white-space:pre-line;">${p.worldRemitInstructions}</td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:12px;color:rgba(255,255,255,0.4);">
+        ⚠ Please use your Registration ID <strong style="color:#ffffff;">${p.registrationId}</strong> as the payment reference so we can match your transfer.
+      </p>
+    `);
+  } else if (p.bankAccountNumber) {
     dataBlocks.push(`
       ${divider()}
       <p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#ffffff;">Bank Transfer Details</p>

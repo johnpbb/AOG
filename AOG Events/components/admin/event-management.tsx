@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BannerUploader } from "@/components/admin/banner-uploader";
 import { EventVenuePanel } from "@/components/admin/event-venue-panel";
+import { RichTextEditor } from "@/components/admin/rich-text-editor";
 import {
   CalendarDays,
   Plus,
@@ -47,6 +48,7 @@ interface Event {
   bannerUrl: string | null;
   location: string | null;
   slug: string;
+  scheduleTable: string | null;
   venues: EventVenue[];
   _count: { registrations: number };
   createdAt: string;
@@ -69,6 +71,7 @@ const emptyForm = {
   endDate: "",
   bannerUrl: "",
   status: "DRAFT" as EventStatus,
+  scheduleTable: "",
 };
 
 function slugify(str: string) {
@@ -136,6 +139,7 @@ export function EventManagement() {
       endDate: form.endDate || null,
       bannerUrl: form.bannerUrl || null,
       status: form.status,
+      scheduleTable: form.scheduleTable || null,
     };
 
     try {
@@ -187,6 +191,7 @@ export function EventManagement() {
       endDate: event.endDate ? event.endDate.slice(0, 16) : "",
       bannerUrl: event.bannerUrl || "",
       status: event.status,
+      scheduleTable: event.scheduleTable || "",
     });
     setShowForm(true);
     setError(null);
@@ -276,13 +281,11 @@ export function EventManagement() {
 
             <div className="space-y-1.5">
               <Label htmlFor="event-desc">Full Description</Label>
-              <textarea
-                id="event-desc"
+              <RichTextEditor
                 value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                onChange={(html) => setForm((f) => ({ ...f, description: html }))}
                 placeholder="Full event description..."
-                rows={4}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                minHeight="100px"
               />
             </div>
 
@@ -338,6 +341,21 @@ export function EventManagement() {
               <BannerUploader
                 value={form.bannerUrl}
                 onChange={(url) => setForm((f) => ({ ...f, bannerUrl: url }))}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="event-schedule">Event Schedule</Label>
+              <p className="text-xs text-muted-foreground">
+                Select your schedule table in Excel or Google Sheets, copy it, then click into the box below and
+                paste — it'll show up on the event page laid out the same way. You can also build or edit a table
+                directly using the table tool in the toolbar.
+              </p>
+              <RichTextEditor
+                value={form.scheduleTable}
+                onChange={(html) => setForm((f) => ({ ...f, scheduleTable: html }))}
+                placeholder="Paste your schedule table here…"
+                minHeight="140px"
               />
             </div>
 

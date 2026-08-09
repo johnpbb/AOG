@@ -96,16 +96,15 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     description: "International guests and delegates",
     type: "individual",
     icon: "globe",
-    fee: 0, // Not specified in the client's matrix — pending confirmation.
+    fee: 100, // Matches Individual Attendee rate for now, per client request — Master doc has no fee column.
     perRegCap: null,
     pool: { adults: 1000, youth: 500, kids: 100 },
     categoryCode: "OD",
   },
 ];
 
-// Pending final client confirmation — current working assumption is 13–25.
-export const YOUTH_AGE_RANGE = "13–25";
-export const KIDS_AGE_RANGE = "6–12";
+export const YOUTH_AGE_RANGE = "15–25yrs";
+export const KIDS_AGE_RANGE = "5–10yrs; 11–14yrs";
 
 // Absolute final date for all installment payments (per client spec).
 export const INSTALLMENT_DEADLINE = new Date("2026-09-30T23:59:59+12:00");
@@ -142,7 +141,7 @@ export interface ChurchRegistration {
   numberOfAttendees: number;
   attendees: Attendee[];
   venue: string;
-  paymentMethod: "online" | "bank-transfer";
+  paymentMethod: "bank-transfer" | "mpaisa" | "world-remit";
   paymentStatus: "pending" | "completed" | "failed";
 }
 
@@ -154,7 +153,7 @@ export interface IndividualRegistration {
   phone: string;
   church?: string;
   venue: string;
-  paymentMethod: "online" | "bank-transfer";
+  paymentMethod: "bank-transfer" | "mpaisa" | "world-remit";
   paymentStatus: "pending" | "completed" | "failed";
 }
 

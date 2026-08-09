@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { EventRegistrationClient } from "@/components/event-registration-client";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { sanitizeRichText } from "@/lib/sanitize-html";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +29,8 @@ export default async function EventRegisterPage({ params }: Props) {
 
   if (!event) notFound();
 
+  const descriptionHtml = sanitizeRichText(event.description);
+
   const serializedEvent = {
     id: event.id,
     name: event.name,
@@ -53,13 +55,7 @@ export default async function EventRegisterPage({ params }: Props) {
       <nav className="brand-nav fixed">
         <div className="max-w-[1280px] mx-auto px-6 flex items-center justify-between h-[68px]">
           <Link href="/">
-            <Image src="/logos/agfj100-light.png" alt="AGFJ100" width={160} height={48} className="object-contain" priority />
-          </Link>
-          <Link
-            href={`/events/${slug}`}
-            className="inline-flex items-center gap-2 text-white/60 text-[13px] no-underline font-medium"
-          >
-            <ArrowLeft size={14} /> Back to event
+            <Image src="/logos/agfj100-light.png" alt="Assemblies of God" width={52} height={52} className="object-contain" priority />
           </Link>
         </div>
       </nav>
@@ -68,20 +64,16 @@ export default async function EventRegisterPage({ params }: Props) {
       <main className="pt-[68px]">
         <div className="max-w-[960px] mx-auto px-6 py-12 pb-20 -bg brand-white">
 
-          <Link
-            href={`/events/${slug}`}
-            className="inline-flex items-center gap-1.5 text-white/45 text-[13px] no-underline mb-8"
-          >
-            <ArrowLeft size={14} /> Back to {event.name}
-          </Link>
-
           <div className="mb-9">
             <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-brand-orange mb-2.5">
               Registration
             </p>
-            <h1 className="text-[clamp(22px,3.5vw,34px)] font-extrabold text-brand-white leading-[1.2] font-boldonse">
+            <h1 className="text-[clamp(22px,3.5vw,34px)] font-extrabold text-brand-white leading-[1.35] font-boldonse mb-5">
               {event.name}
             </h1>
+            {descriptionHtml && (
+              <div className="prose-dark text-base" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+            )}
           </div>
 
           {/*
@@ -101,7 +93,7 @@ export default async function EventRegisterPage({ params }: Props) {
       {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
       <footer className="bg-[#050505] border-t border-brand-orange/12 py-[44px] px-6">
         <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-5 text-center">
-          <Image src="/logos/agfj100-dark.png" alt="AGFJ100" width={130} height={42} className="object-contain opacity-70" />
+          <Image src="/logos/agfj100-dark.png" alt="Assemblies of God" width={42} height={42} className="object-contain opacity-70" />
           <p className="text-xs text-white/30">© 2026 Assemblies of God, Fiji. All rights reserved.</p>
           <div className="flex gap-7 text-[13px]">
             <Link href="/admin" className="text-white/35 no-underline">Admin</Link>

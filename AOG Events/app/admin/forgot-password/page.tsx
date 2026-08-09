@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen bg-brand-black flex items-center justify-center">
       <div className="w-full max-w-sm px-6">
         <div className="flex justify-center mb-8">
-          <Image src="/logos/agfj100-light.png" alt="AGFJ100" width={160} height={48} className="object-contain" priority />
+          <Image src="/logos/agfj100-light.png" alt="Assemblies of God" width={72} height={72} className="object-contain" priority />
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-xl p-8">

@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       bannerUrl,
       location,
       slug,
+      scheduleTable,
     } = body;
 
     if (!name || !slug) {
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
         bannerUrl: bannerUrl || null,
         location: location || null,
         slug,
+        scheduleTable: scheduleTable || null,
       },
     });
 

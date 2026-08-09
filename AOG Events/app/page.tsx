@@ -33,7 +33,7 @@ export default async function HomePage() {
       {/* ── NAV ─────────────────────────────────────────────────────────────── */}
       <nav className="brand-nav fixed">
         <div className="max-w-[1280px] mx-auto px-6 flex items-center justify-between h-[68px]">
-          <Image src="/logos/agfj100-light.png" alt="AGFJ100" width={160} height={48} className="object-contain" priority />
+          <Image src="/logos/agfj100-light.png" alt="Assemblies of God" width={52} height={52} className="object-contain" priority />
           <Link href={primaryEventHref} className="inline-flex items-center gap-2 bg-brand-orange text-brand-white px-[22px] py-[10px] rounded-lg font-bold text-sm no-underline tracking-[0.03em]">
             Register Now <ArrowRight size={15} />
           </Link>
@@ -53,10 +53,10 @@ export default async function HomePage() {
           <div className="mb-8">
             <Image
               src="/logos/agfj100-light.png"
-              alt="AGFJ100 — Yesterday, Today & Forever"
-              width={640}
-              height={210}
-              className="object-contain w-full h-auto"
+              alt="Assemblies of God"
+              width={220}
+              height={220}
+              className="object-contain mx-auto"
               priority
             />
           </div>
@@ -107,7 +107,7 @@ export default async function HomePage() {
             <p className="text-xs font-bold tracking-[0.22em] uppercase text-brand-orange mb-[14px]">
               Centennial Celebrations
             </p>
-            <h2 className="text-[clamp(32px,5vw,54px)] font-extrabold text-brand-black leading-[1.1] font-boldonse">
+            <h2 className="text-[clamp(32px,5vw,54px)] font-extrabold text-brand-black leading-[1.3] font-boldonse">
               Upcoming Events
             </h2>
             <p className="mt-4 text-[17px] text-[#666] max-w-[520px] mx-auto leading-[1.7]">
@@ -244,7 +244,7 @@ export default async function HomePage() {
       {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
       <footer className="bg-[#050505] border-t border-brand-orange/12 py-[44px] px-6">
         <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-5 text-center">
-          <Image src="/logos/agfj100-dark.png" alt="AGFJ100" width={130} height={42} className="object-contain opacity-70" />
+          <Image src="/logos/agfj100-dark.png" alt="Assemblies of God" width={42} height={42} className="object-contain opacity-70" />
           <p className="text-xs text-white/30">© 2026 Assemblies of God, Fiji. All rights reserved.</p>
           <div className="flex gap-7 text-[13px]">
             <Link href="/admin" className="text-white/35 no-underline">Admin</Link>

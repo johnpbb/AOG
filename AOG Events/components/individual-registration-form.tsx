@@ -6,11 +6,18 @@ import { PaymentTypeSelector } from "./payment-type-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AttendeeCountStepper } from "@/components/attendee-count-stepper";
 import { User, CreditCard, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { loadAnzScript, initAnzPayment } from "@/lib/anz-egate-client";
 import { TurnstileWidget } from "@/components/turnstile-widget";
+import { COUNTRIES } from "@/lib/countries";
 
 interface IndividualRegistrationFormProps {
   category: CategoryInfo;
@@ -31,13 +38,28 @@ export function IndividualRegistrationForm({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isOverseasDelegate = category.id === "overseas-delegates";
+
+  // Online payment (ANZ eGate) is disabled for now — no merchant account yet.
+  // Overseas delegates pay via World Remit to M-PAiSA; locals pay via M-PAiSA directly.
+  const paymentMethods = isOverseasDelegate
+    ? ([
+        { id: "bank-transfer", label: "Bank Transfer", description: "Direct bank-to-bank transfer" },
+        { id: "world-remit", label: "World Remit to M-PAiSA", description: "World Remit transfer to our M-PAiSA account" },
+      ] as const)
+    : ([
+        { id: "bank-transfer", label: "Bank Transfer", description: "Direct bank-to-bank transfer" },
+        { id: "mpaisa", label: "M-PAiSA", description: "Mobile money transfer to our M-PAiSA number" },
+      ] as const);
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
     church: "",
-    paymentMethod: "" as "online" | "bank-transfer" | "",
+    country: "",
+    paymentMethod: "" as "bank-transfer" | "mpaisa" | "world-remit" | "",
   });
   const [adults, setAdults] = useState(1);
   const [youth, setYouth] = useState(0);
@@ -56,7 +78,9 @@ export function IndividualRegistrationForm({
     ? adults > category.pool.adults || youth > category.pool.youth || kids > category.pool.kids
     : false;
 
-  const isStep1Valid = formData.firstName && formData.lastName && formData.email && formData.phone && numberOfTickets > 0;
+  const isStep1Valid =
+    formData.firstName && formData.lastName && formData.email && formData.phone && numberOfTickets > 0 &&
+    (!isOverseasDelegate || formData.country);
 
   const handleSubmit = async () => {
     setIsProcessing(true);
@@ -74,8 +98,8 @@ export function IndividualRegistrationForm({
           adults,
           youth,
           kids,
-          paymentType: formData.paymentMethod === "online" ? "full" : paymentType,
-          installmentCount: formData.paymentMethod !== "online" && paymentType === "partial" ? installmentCount : null,
+          paymentType,
+          installmentCount: paymentType === "partial" ? installmentCount : null,
           eventId,
           turnstileToken,
           ...formData,
@@ -86,36 +110,15 @@ export function IndividualRegistrationForm({
       if (!dbResponse.ok) throw new Error(dbData.error || "Could not save registration");
       const registrationId = dbData.registrationId;
 
-      if (formData.paymentMethod === "online" && totalFee > 0) {
-        await loadAnzScript();
-        const payRes = await fetch("/api/payment/anz/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bookingId: registrationId, amount: totalFee, customerEmail: formData.email }),
-        });
-        const payData = await payRes.json();
-        if (payData.sessionId) {
-          initAnzPayment(
-            payData.sessionId,
-            payData.merchantId,
-            () => onSubmit({ category: category.id, registrationId, ...formData, numberOfTickets, fee: totalFee, paymentStatus: "completed" }),
-            () => { setIsProcessing(false); alert("Payment was cancelled"); },
-            (err: any) => { setIsProcessing(false); console.error(err); alert("An error occurred during payment"); }
-          );
-        } else {
-          throw new Error(payData.error || "Failed to create payment session");
-        }
-      } else {
-        onSubmit({
-          category: category.id,
-          registrationId,
-          ...formData,
-          numberOfTickets,
-          fee: totalFee,
-          paymentType: formData.paymentMethod === "online" ? "full" : paymentType,
-          installmentCount: formData.paymentMethod !== "online" && paymentType === "partial" ? installmentCount : null,
-        });
-      }
+      onSubmit({
+        category: category.id,
+        registrationId,
+        ...formData,
+        numberOfTickets,
+        fee: totalFee,
+        paymentType,
+        installmentCount: paymentType === "partial" ? installmentCount : null,
+      });
     } catch (err: any) {
       setIsProcessing(false);
       setError(err.message);
@@ -193,11 +196,27 @@ export function IndividualRegistrationForm({
                 onChange={(e) => updateFormData("phone", e.target.value)} />
             </Field>
 
-            <Field className="md:col-span-2">
+            <Field className={isOverseasDelegate ? "" : "md:col-span-2"}>
               <FieldLabel htmlFor="church">Church Affiliation (Optional)</FieldLabel>
               <Input id="church" placeholder="Enter your church name if applicable" value={formData.church}
                 onChange={(e) => updateFormData("church", e.target.value)} />
             </Field>
+
+            {isOverseasDelegate && (
+              <Field>
+                <FieldLabel htmlFor="country">Country</FieldLabel>
+                <Select value={formData.country} onValueChange={(v) => updateFormData("country", v)}>
+                  <SelectTrigger id="country" className="w-full">
+                    <SelectValue placeholder="Select your country of residence" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
           </FieldGroup>
 
           {/* Attendee counts */}
@@ -258,25 +277,24 @@ export function IndividualRegistrationForm({
           <div className="space-y-3">
             <FieldLabel>Payment Method</FieldLabel>
             <div className="grid gap-3 md:grid-cols-2">
-              {(["online", "bank-transfer"] as const).map((method) => (
-                <button key={method} onClick={() => updateFormData("paymentMethod", method)}
+              {paymentMethods.map((method) => (
+                <button key={method.id} onClick={() => updateFormData("paymentMethod", method.id)}
                   className={cn("p-4 rounded-lg border text-left transition-all",
-                    formData.paymentMethod === method
+                    formData.paymentMethod === method.id
                       ? "border-primary bg-primary/5 ring-1 ring-primary"
                       : "border-border hover:border-primary/50"
                   )}>
-                  <div className="font-medium text-foreground">
-                    {method === "online" ? "Online Payment" : "Bank Transfer"}
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {method === "online" ? "Pay via VaizeePay (M-PAiSA, MyCash, Visa/Mastercard)" : "Direct bank-to-bank transfer"}
-                  </div>
+                  <div className="font-medium text-foreground">{method.label}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{method.description}</div>
                 </button>
               ))}
             </div>
+            {!formData.paymentMethod && (
+              <p className="text-xs text-muted-foreground">Select a payment method above to continue.</p>
+            )}
           </div>
 
-          {formData.paymentMethod === "bank-transfer" && (
+          {formData.paymentMethod && (
             <PaymentTypeSelector
               paymentType={paymentType}
               onPaymentTypeChange={setPaymentType}

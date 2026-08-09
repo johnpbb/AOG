@@ -41,7 +41,7 @@ export function LogPaymentDialog({ registrationId, registrationLabel, fee, open,
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [amount, setAmount] = useState("");
   const [entryType, setEntryType] = useState<"FULL" | "INSTALLMENT">("INSTALLMENT");
-  const [method, setMethod] = useState<"BANK_TRANSFER" | "CASH" | "ONLINE">("BANK_TRANSFER");
+  const [method, setMethod] = useState<"BANK_TRANSFER" | "MPAISA" | "WORLD_REMIT" | "CASH" | "ONLINE">("BANK_TRANSFER");
   const [referenceNote, setReferenceNote] = useState("");
   const [installmentNo, setInstallmentNo] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -144,8 +144,10 @@ export function LogPaymentDialog({ registrationId, registrationLabel, fee, open,
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                  <SelectItem value="MPAISA">M-PAiSA</SelectItem>
+                  <SelectItem value="WORLD_REMIT">World Remit to M-PAiSA</SelectItem>
                   <SelectItem value="CASH">Cash</SelectItem>
-                  <SelectItem value="ONLINE">Online</SelectItem>
+                  <SelectItem value="ONLINE">Online (disabled)</SelectItem>
                 </SelectContent>
               </Select>
             </Field>

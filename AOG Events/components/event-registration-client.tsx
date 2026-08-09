@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { CategoryCard } from "@/components/category-card";
 import { ChurchRegistrationForm } from "@/components/church-registration-form";
 import { IndividualRegistrationForm } from "@/components/individual-registration-form";
@@ -8,7 +9,7 @@ import { RegistrationSuccess } from "@/components/registration-success";
 import { ChurchAutocomplete, ChurchOption } from "@/components/church-autocomplete";
 import { GlossarySidebar } from "@/components/glossary-sidebar";
 import { REGISTRATION_CATEGORIES, CategoryInfo } from "@/lib/types";
-import { ArrowLeft, CalendarDays, MapPin, Building, User } from "lucide-react";
+import { ArrowLeft, Building, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Venue {
@@ -57,10 +58,10 @@ export function EventRegistrationClient({ event }: Props) {
       return REGISTRATION_CATEGORIES.filter((c) => c.type === "church");
     }
     if (path === "individual") {
-      // Overseas Delegates register manually with the admin team (per client,
-      // 2026-08-07) rather than through this public form — admin can still
-      // tag a registration with this category via CSV import.
-      return REGISTRATION_CATEGORIES.filter((c) => c.type === "individual" && c.id !== "overseas-delegates");
+      // Per the client's 3-category matrix (2026-08-10): "Individuals &
+      // Overseas Residents/Churches" is one public-facing bucket covering
+      // both Individual Attendee and Overseas Delegates.
+      return REGISTRATION_CATEGORIES.filter((c) => c.type === "individual");
     }
     return [];
   })();
@@ -139,29 +140,31 @@ export function EventRegistrationClient({ event }: Props) {
       <div role="status" aria-live="polite" className="sr-only">{stepLabels[step]}</div>
 
       {step === "entry" && (
+        <Link
+          href={`/events/${event.slug}`}
+          className="inline-flex items-center gap-2 text-muted-foreground text-sm no-underline -ml-2 w-fit hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Link>
+      )}
+      {step === "category" && (
+        <Button variant="ghost" onClick={handleBackToEntry} className="gap-2 -ml-2">
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+      )}
+      {step === "form" && (
+        <Button variant="ghost" onClick={handleBackToCategory} className="gap-2 -ml-2">
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+      )}
+
+      {step === "entry" && (
         <div className="space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Register</h1>
-            <p className="mt-2 text-muted-foreground font-medium">{event.name}</p>
-            <div className="flex items-center justify-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
-              {event.location && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {event.location}
-                </span>
-              )}
-              {event.startDate && (
-                <span className="flex items-center gap-1">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  {new Date(event.startDate).toLocaleDateString("en-FJ", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </span>
-              )}
-            </div>
-            <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
+            <p className="text-muted-foreground max-w-xl mx-auto">
               First, tell us who you're registering on behalf of.
             </p>
           </div>
@@ -172,7 +175,7 @@ export function EventRegistrationClient({ event }: Props) {
               className={`p-4 rounded-lg border text-left transition-all ${path === "church" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
             >
               <Building className="h-5 w-5 text-muted-foreground mb-2" />
-              <p className="font-medium text-foreground">AG Fiji Church</p>
+              <p className="font-medium text-foreground">AOG Fiji Based Church</p>
               <p className="text-sm text-muted-foreground mt-1">Registering on behalf of a local AG Fiji church.</p>
             </button>
             <button
@@ -180,7 +183,7 @@ export function EventRegistrationClient({ event }: Props) {
               className={`p-4 rounded-lg border text-left transition-all ${path === "individual" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
             >
               <User className="h-5 w-5 text-muted-foreground mb-2" />
-              <p className="font-medium text-foreground">Individual / Overseas Delegate</p>
+              <p className="font-medium text-foreground">Individuals & Overseas Residents/Churches</p>
               <p className="text-sm text-muted-foreground mt-1">Personal registration, overseas delegates, or anyone who doesn't fit a local church category.</p>
             </button>
           </div>
@@ -209,11 +212,6 @@ export function EventRegistrationClient({ event }: Props) {
 
       {step === "category" && (
         <div className="space-y-8">
-          <Button variant="ghost" onClick={handleBackToEntry} className="gap-2 -ml-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-
           <div className="text-center">
             <h2 className="text-2xl font-semibold text-foreground">Select Category</h2>
             <p className="mt-2 text-muted-foreground max-w-xl mx-auto">
@@ -242,11 +240,6 @@ export function EventRegistrationClient({ event }: Props) {
 
       {step === "form" && selectedCategory && (
         <div className="space-y-6">
-          <Button variant="ghost" onClick={handleBackToCategory} className="gap-2 -ml-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Categories
-          </Button>
-
           <div className="p-6 rounded-lg border border-border bg-card">
             {selectedCategory.type === "church" ? (
               <ChurchRegistrationForm
