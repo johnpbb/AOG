@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     const events = await prisma.attendanceEvent.findMany({
       where: { eventDate: date },
       include: {
-        ticket: { select: { ticketNumber: true, ticketType: true } },
+        ticket: { select: { ticketNumber: true, ticketType: true, attendee: { select: { firstName: true, lastName: true } } } },
         registration: {
           select: {
             registrationId: true,
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     const flagged = await prisma.attendanceEvent.findMany({
       where: { isFlagged: true },
       include: {
-        ticket: { select: { ticketNumber: true, ticketType: true } },
+        ticket: { select: { ticketNumber: true, ticketType: true, attendee: { select: { firstName: true, lastName: true } } } },
         registration: {
           select: {
             registrationId: true,
@@ -130,6 +130,7 @@ export async function POST(request: Request) {
     const ticket = await prisma.ticket.findUnique({
       where: { ticketNumber: code },
       include: {
+        attendee: { select: { firstName: true, lastName: true } },
         registration: {
           include: {
             attendees: { take: 1 },
@@ -156,7 +157,12 @@ export async function POST(request: Request) {
 
     const registration = ticket.registration;
     const today = getFijiDateString();
-    const name = registration.attendees[0]
+    // This specific ticket's attendee, when known — falls back to the
+    // registration's first attendee (legacy/admin-imported tickets with no
+    // per-person link) and then the registration ID itself.
+    const name = ticket.attendee
+      ? `${ticket.attendee.firstName} ${ticket.attendee.lastName}`
+      : registration.attendees[0]
       ? `${registration.attendees[0].firstName} ${registration.attendees[0].lastName}`
       : registration.registrationId;
     const venueName = registration.venue?.name || registration.venueId;
@@ -245,7 +251,10 @@ export async function PATCH(request: Request) {
 
     const ticket = await prisma.ticket.findUnique({
       where: { ticketNumber: code },
-      include: { registration: { include: { attendees: { take: 1 } } } },
+      include: {
+        attendee: { select: { firstName: true, lastName: true } },
+        registration: { include: { attendees: { take: 1 } } },
+      },
     });
 
     if (!ticket) {
@@ -272,7 +281,9 @@ export async function PATCH(request: Request) {
       },
     });
 
-    const name = registration.attendees[0]
+    const name = ticket.attendee
+      ? `${ticket.attendee.firstName} ${ticket.attendee.lastName}`
+      : registration.attendees[0]
       ? `${registration.attendees[0].firstName} ${registration.attendees[0].lastName}`
       : registration.registrationId;
 

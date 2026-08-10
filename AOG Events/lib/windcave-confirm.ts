@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendTicketConfirmationEmail } from "@/lib/email";
 import { getWindcaveSession, isWindcaveApproved, windcaveTransactionId } from "@/lib/windcave-client";
-import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues } from "@/lib/tickets";
+import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues, deriveRegistrationTypeLabel, formatPaymentStatusLabel } from "@/lib/tickets";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
 import { format } from "date-fns";
 
@@ -50,10 +50,11 @@ export async function confirmWindcavePayment(regId: string, sessionId?: string):
     },
     include: {
       attendees: true,
-      tickets: { select: { ticketNumber: true, ticketType: true } },
+      tickets: { include: { attendee: { select: { firstName: true, lastName: true } } } },
       event: true,
       venue: true,
       venueAllocations: { include: { venue: { select: { name: true, city: true } } } },
+      church: true,
     },
   });
 
@@ -61,7 +62,7 @@ export async function confirmWindcavePayment(regId: string, sessionId?: string):
   let tickets = updated.tickets;
   if (tickets.length === 0) {
     tickets = await prisma.$transaction((tx) =>
-      generateTicketsForRegistration(tx, updated.id, updated.adults, updated.youth)
+      generateTicketsForRegistration(tx, updated.id, updated.adults, updated.youth, updated.attendees)
     );
   }
 
@@ -72,14 +73,23 @@ export async function confirmWindcavePayment(regId: string, sessionId?: string):
 
   const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === updated.category);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const ticketsWithVenue = attachVenuesToTickets(tickets, updated.venueAllocations);
+  const ticketsWithVenue = attachVenuesToTickets(tickets, updated.venueAllocations).map((t) => ({
+    ...t,
+    attendeeName: t.attendee ? `${t.attendee.firstName} ${t.attendee.lastName}`.trim() : undefined,
+  }));
 
-  // Fire-and-forget so the response isn't blocked on SMTP.
+  // Fire-and-forget so the response isn't blocked on SMTP. Gateway payment is
+  // always treated as a single full payment.
   sendTicketConfirmationEmail({
     to: updated.email,
     registrantName: name,
     registrationId: updated.registrationId,
     category: catInfo?.name ?? updated.category,
+    registrationType: deriveRegistrationTypeLabel(updated.type, updated.category),
+    churchName: updated.church?.name,
+    district: updated.church?.district ?? undefined,
+    country: updated.church?.country,
+    paymentStatusLabel: formatPaymentStatusLabel(updated.fee, updated.fee),
     eventName: updated.event?.name ?? "AOG Fiji 100th Anniversary",
     eventDate: updated.event?.startDate ? format(new Date(updated.event.startDate), "d MMMM yyyy") : "TBC",
     venueName: summarizeTicketVenues(ticketsWithVenue) || updated.venue?.name || "",

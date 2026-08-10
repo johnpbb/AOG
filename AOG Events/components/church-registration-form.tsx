@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CategoryInfo, YOUTH_AGE_RANGE, KIDS_AGE_RANGE } from "@/lib/types";
+import { CategoryInfo, KIDS_YOUNGER_AGE_RANGE, KIDS_OLDER_AGE_RANGE } from "@/lib/types";
 import { ChurchOption } from "./church-autocomplete";
 import { PaymentTypeSelector } from "./payment-type-selector";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,9 @@ import { Building, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { AttendeeCountStepper } from "@/components/attendee-count-stepper";
+import { AttendeeCsvUpload } from "@/components/attendee-csv-upload";
+
+type NamedAttendee = { firstName: string; lastName: string; ageCategory: "ADULT" | "YOUTH"; email?: string; phone?: string };
 
 interface ChurchRegistrationFormProps {
   category: CategoryInfo;
@@ -44,9 +47,12 @@ export function ChurchRegistrationForm({
     personalPhone: "",
     personalEmail: "",
   });
-  const [adults, setAdults] = useState(0);
-  const [youth, setYouth] = useState(0);
-  const [kids, setKids] = useState(0);
+  const [attendees, setAttendees] = useState<NamedAttendee[] | null>(null);
+  const [kidsYounger, setKidsYounger] = useState(0);
+  const [kidsOlder, setKidsOlder] = useState(0);
+  const kids = kidsYounger + kidsOlder;
+  const adults = attendees?.filter((a) => a.ageCategory === "ADULT").length ?? 0;
+  const youth = attendees?.filter((a) => a.ageCategory === "YOUTH").length ?? 0;
   const total = adults + youth + kids;
   const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
   const [installmentCount, setInstallmentCount] = useState(5);
@@ -66,6 +72,7 @@ export function ChurchRegistrationForm({
     formData.pastorName &&
     (!needsChurchDetails || (formData.churchPhone && formData.churchEmail)) &&
     (!needsPersonalDetails || (formData.personalPhone && formData.personalEmail)) &&
+    !!attendees &&
     total > 0;
 
   const overAttendeeLimit = adults > perRegCap.adults || youth > perRegCap.youth || kids > perRegCap.kids;
@@ -91,8 +98,7 @@ export function ChurchRegistrationForm({
           email: contactEmail,
           phone: contactPhone,
           fee: category.fee,
-          adults,
-          youth,
+          attendees,
           kids,
           numberOfTickets: total,
           paymentMethod: "bank-transfer",
@@ -230,24 +236,27 @@ export function ChurchRegistrationForm({
           </div>
 
           {/* Attendance Demographics */}
-          <div className="text-xs text-muted-foreground mt-0.5 p-5 rounded-xl border-2 border-border bg-secondary/30 space-y-3">
+          <div className="text-xs text-muted-foreground mt-0.5 p-5 rounded-xl border-2 border-border bg-secondary/30 space-y-4">
             <div>
-              <FieldLabel>Attendance Demographics</FieldLabel>
+              <FieldLabel>Attendee List (Adults &amp; Youth)</FieldLabel>
               <p className="text-xs text-muted-foreground mt-0.5">
-                How many attendees from your church, by age group? (max {perRegCap.adults.toLocaleString()} adults,{" "}
-                {perRegCap.youth.toLocaleString()} youth, {perRegCap.kids.toLocaleString()} kids)
+                Upload a CSV naming every adult and youth attending — each gets their own ticket with their name
+                printed on it. (max {perRegCap.adults.toLocaleString()} adults, {perRegCap.youth.toLocaleString()} youth)
               </p>
             </div>
-            <div className="grid gap-3 md:grid-cols-3">
-              <AttendeeCountStepper id="adults" label="Adults" value={adults} onChange={setAdults} />
-              <AttendeeCountStepper
-                id="youth"
-                label={`NextGen / Youth (${YOUTH_AGE_RANGE})`}
-                value={youth}
-                onChange={setYouth}
-              />
-              <AttendeeCountStepper id="kids" label={`Kids (${KIDS_AGE_RANGE})`} value={kids} onChange={setKids} />
+            <AttendeeCsvUpload onChange={setAttendees} />
+
+            <div className="pt-1 border-t border-border">
+              <FieldLabel>Kids</FieldLabel>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                Headcount only — kids don&apos;t receive an entry ticket/QR code, but still count toward your registration limit.
+              </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <AttendeeCountStepper id="kidsYounger" label={`Kids (${KIDS_YOUNGER_AGE_RANGE})`} value={kidsYounger} onChange={setKidsYounger} />
+                <AttendeeCountStepper id="kidsOlder" label={`Kids (${KIDS_OLDER_AGE_RANGE})`} value={kidsOlder} onChange={setKidsOlder} />
+              </div>
             </div>
+
             <div className="flex items-center justify-between text-sm pt-1 border-t border-border">
               <span className="text-muted-foreground">Total Attendees</span>
               <span className={cn("font-semibold", overAttendeeLimit ? "text-destructive" : "text-foreground")}>

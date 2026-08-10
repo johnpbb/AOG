@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues } from "@/lib/tickets";
+import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues, deriveRegistrationTypeLabel, formatPaymentStatusLabel } from "@/lib/tickets";
 import { sendFinanceNotificationEmail, sendBalanceUpdateEmail, sendTicketConfirmationEmail } from "@/lib/email";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
 import { format } from "date-fns";
@@ -46,11 +46,12 @@ export async function POST(
         where: { id },
         include: {
           payments: true,
-          tickets: true,
+          tickets: { include: { attendee: { select: { firstName: true, lastName: true } } } },
           venue: true,
           venueAllocations: { include: { venue: { select: { name: true, city: true } } } },
           event: true,
           church: true,
+          attendees: { select: { id: true, ageCategory: true } },
         },
       });
       if (!registration) throw new Error("NOT_FOUND");
@@ -61,12 +62,7 @@ export async function POST(
           registrationId: id,
           amount: parseFloat(String(amount)),
           entryType: entryType === "INSTALLMENT" ? "INSTALLMENT" : "FULL",
-          method:
-            method === "CASH" ? "CASH"
-            : method === "ONLINE" ? "ONLINE"
-            : method === "MPAISA" ? "MPAISA"
-            : method === "WORLD_REMIT" ? "WORLD_REMIT"
-            : "BANK_TRANSFER",
+          method: method === "CASH" ? "CASH" : method === "ONLINE" ? "ONLINE" : "BANK_TRANSFER",
           referenceNote: referenceNote || null,
           installmentNo: installmentNo ? parseInt(String(installmentNo), 10) : null,
           confirmedById: currentUser.id,
@@ -84,7 +80,7 @@ export async function POST(
       if (fullyPaid && registration.paymentStatus !== "COMPLETED") {
         await tx.registration.update({ where: { id }, data: { paymentStatus: "COMPLETED" } });
         if (registration.tickets.length === 0) {
-          tickets = await generateTicketsForRegistration(tx, id, registration.adults, registration.youth);
+          tickets = await generateTicketsForRegistration(tx, id, registration.adults, registration.youth, registration.attendees);
         }
       }
 
@@ -103,7 +99,10 @@ export async function POST(
       (formData?.firstName ? `${formData.firstName} ${formData.lastName ?? ""}`.trim() : null) ||
       result.registration.registrarName ||
       result.registration.email;
-    const ticketsWithVenue = attachVenuesToTickets(result.tickets, result.registration.venueAllocations);
+    const ticketsWithVenue = attachVenuesToTickets(result.tickets, result.registration.venueAllocations).map((t) => ({
+      ...t,
+      attendeeName: t.attendee ? `${t.attendee.firstName} ${t.attendee.lastName}`.trim() : undefined,
+    }));
 
     await Promise.allSettled([
       siteConfig?.financeNotificationEmail
@@ -133,6 +132,11 @@ export async function POST(
             registrantName: result.registration.registrarName || result.registration.email,
             registrationId: result.registration.registrationId,
             category: catInfo?.name ?? result.registration.category,
+            registrationType: deriveRegistrationTypeLabel(result.registration.type, result.registration.category),
+            churchName: result.registration.church?.name,
+            district: result.registration.church?.district ?? undefined,
+            country: result.registration.church?.country,
+            paymentStatusLabel: formatPaymentStatusLabel(result.registration.fee, result.totalPaid),
             eventName: result.registration.event?.name ?? "AOG Fiji 100th Anniversary",
             eventDate: result.registration.event?.startDate
               ? format(new Date(result.registration.event.startDate), "d MMMM yyyy")

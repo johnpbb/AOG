@@ -22,22 +22,12 @@ export async function GET() {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const {
-      bankName, bankAccountName, bankAccountNumber, bankBranch,
-      mpaisaNumber, mpaisaName, worldRemitInstructions,
-      notificationEmail,
-    } = body;
-
-    const data = {
-      bankName, bankAccountName, bankAccountNumber, bankBranch,
-      mpaisaNumber, mpaisaName, worldRemitInstructions,
-      notificationEmail,
-    };
+    const { bankName, bankAccountName, bankAccountNumber, bankBranch, notificationEmail } = body;
 
     const config = await prisma.siteConfig.upsert({
       where: { id: "default" },
-      update: data,
-      create: { id: "default", ...data },
+      update: { bankName, bankAccountName, bankAccountNumber, bankBranch, notificationEmail },
+      create: { id: "default", bankName, bankAccountName, bankAccountNumber, bankBranch, notificationEmail },
     });
 
     return NextResponse.json(config);

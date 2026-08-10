@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       })
     );
 
-    // ── Send emails for manual (bank transfer / M-PAiSA / World Remit) registrations ──
+    // ── Send emails for bank transfer registrations ────────────────────────
     // "online" is disabled for now but the check is kept so a legacy/leftover
     // client that still sends it doesn't get a duplicate pending email.
     if (paymentMethod !== "online" && email && email !== "unknown") {
@@ -96,10 +96,6 @@ export async function POST(request: Request) {
         bankAccountName: siteConfig?.bankAccountName ?? "",
         bankAccountNumber: siteConfig?.bankAccountNumber ?? "",
         bankBranch: siteConfig?.bankBranch ?? "",
-        mpaisaNumber: siteConfig?.mpaisaNumber ?? "",
-        mpaisaName: siteConfig?.mpaisaName ?? "",
-        worldRemitInstructions: siteConfig?.worldRemitInstructions ?? "",
-        paymentMethod,
         eventName,
         paymentType: result.registration.paymentType,
         installmentCount: result.registration.installmentCount,

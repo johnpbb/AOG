@@ -41,7 +41,10 @@ export interface CreateRegistrationInput {
   kids?: number;
   paymentType?: string;
   installmentCount?: number;
-  attendees?: { firstName: string; lastName: string; email?: string; phone?: string }[];
+  // When present, this is the authoritative source for adults/youth counts
+  // (derived by ageCategory below) — `input.adults`/`input.youth` are ignored
+  // in that case. Kids are always headcount-only and never appear here.
+  attendees?: { firstName: string; lastName: string; email?: string; phone?: string; ageCategory: "ADULT" | "YOUTH" }[];
   formData?: Record<string, unknown>;
 }
 
@@ -146,8 +149,29 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
   }
 
   const isChurchPath = (input.type || "").toLowerCase() === "church";
-  const numAdults = Math.max(0, input.adults ?? 0);
-  const numYouth = Math.max(0, input.youth ?? 0);
+
+  // Named attendees (church CSV upload / individual name fields), when
+  // supplied, are the source of truth for adults/youth counts — this closes
+  // the gap where a client could otherwise send mismatched counts vs. names.
+  // Callers with no per-person names (admin bulk CSV import, legacy paths)
+  // keep sending bare counts.
+  let numAdults: number;
+  let numYouth: number;
+  if (input.attendees && input.attendees.length > 0) {
+    for (const a of input.attendees) {
+      if (!a.firstName?.trim() || !a.lastName?.trim()) {
+        throw new RegistrationValidationError("Each attendee needs a first and last name.");
+      }
+      if (a.ageCategory !== "ADULT" && a.ageCategory !== "YOUTH") {
+        throw new RegistrationValidationError(`Invalid age category for attendee "${a.firstName} ${a.lastName}".`);
+      }
+    }
+    numAdults = input.attendees.filter((a) => a.ageCategory === "ADULT").length;
+    numYouth = input.attendees.filter((a) => a.ageCategory === "YOUTH").length;
+  } else {
+    numAdults = Math.max(0, input.adults ?? 0);
+    numYouth = Math.max(0, input.youth ?? 0);
+  }
   const numKids = Math.max(0, input.kids ?? 0);
   const qty = numAdults + numYouth + numKids;
   if (qty <= 0) {
@@ -193,11 +217,7 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
       contactEmail: input.contactEmail || null,
       eventId: input.eventId,
       fee,
-      paymentMethod:
-        input.paymentMethod === "mpaisa" ? "MPAISA"
-        : input.paymentMethod === "world-remit" ? "WORLD_REMIT"
-        : input.paymentMethod === "online" ? "ONLINE"
-        : "BANK_TRANSFER",
+      paymentMethod: input.paymentMethod === "online" ? "ONLINE" : "BANK_TRANSFER",
       paymentStatus: "PENDING",
       formData: (input.formData || {}) as Prisma.InputJsonValue,
       numberOfAttendees: qty,
@@ -215,6 +235,7 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
                 lastName: a.lastName,
                 email: a.email || null,
                 phone: a.phone || null,
+                ageCategory: a.ageCategory,
               })),
             },
           }

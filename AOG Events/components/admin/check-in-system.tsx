@@ -35,12 +35,21 @@ interface AttendanceEvent {
   timestamp: string;
   isFlagged: boolean;
   flagReason?: string;
-  ticket?: { ticketNumber: string; ticketType: TicketType } | null;
+  ticket?: { ticketNumber: string; ticketType: TicketType; attendee?: { firstName: string; lastName: string } | null } | null;
   registration: {
     registrationId: string;
     category: string;
     attendees: { firstName: string; lastName: string }[];
   };
+}
+
+// The ticket's own linked attendee (if any) is the correct name for this
+// specific scan — registration.attendees[0] is only a fallback for
+// legacy/admin-imported tickets with no per-person name.
+function eventAttendeeName(ev: AttendanceEvent): string {
+  if (ev.ticket?.attendee) return `${ev.ticket.attendee.firstName} ${ev.ticket.attendee.lastName}`;
+  if (ev.registration.attendees[0]) return `${ev.registration.attendees[0].firstName} ${ev.registration.attendees[0].lastName}`;
+  return ev.registration.registrationId;
 }
 
 interface DailyStats {
@@ -368,9 +377,7 @@ export function CheckInSystem() {
                   <p className="text-sm text-muted-foreground text-center py-6">No activity yet today</p>
                 ) : (
                   stats.events.map(ev => {
-                    const nameStr = ev.registration.attendees[0]
-                      ? `${ev.registration.attendees[0].firstName} ${ev.registration.attendees[0].lastName}`
-                      : ev.registration.registrationId;
+                    const nameStr = eventAttendeeName(ev);
                     const timeStr = format(new Date(ev.timestamp), "HH:mm");
                     const isIn = ev.type === "CHECK_IN";
                     return (
@@ -426,9 +433,7 @@ export function CheckInSystem() {
               <CardContent>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {stats.flagged.map(ev => {
-                    const nameStr = ev.registration.attendees[0]
-                      ? `${ev.registration.attendees[0].firstName} ${ev.registration.attendees[0].lastName}`
-                      : ev.registration.registrationId;
+                    const nameStr = eventAttendeeName(ev);
                     return (
                       <div key={ev.id} className="flex items-start justify-between gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
                         <div className="min-w-0">

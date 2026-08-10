@@ -41,8 +41,16 @@ interface TicketPageParams {
   ticketNumber: string;
   ticketType: "ADULT" | "YOUTH";
   registrationId: string;
-  registrantName: string;
+  // The specific named attendee this ticket was issued for, when known;
+  // falls back to the registrant/pastor name for admin-bulk-imported or
+  // legacy registrations with no linked Attendee.
+  attendeeName: string;
   category: string;
+  registrationType: string;
+  churchName?: string;
+  district?: string;
+  country?: string;
+  paymentStatusLabel: string;
   eventName: string;
   eventDate: string;
   venueName: string;
@@ -90,7 +98,7 @@ async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
 
   // Ticket box border
   page.drawRectangle({
-    x: 50, y: height - 420, width: 495, height: 300,
+    x: 50, y: height - 540, width: 495, height: 420,
     borderColor: rgb(0.85, 0.88, 0.92), borderWidth: 1,
   });
 
@@ -102,7 +110,7 @@ async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
   value(p.ticketNumber, 75, height - 223, 15);
 
   label("ATTENDEE", 75, height - 255);
-  value(p.registrantName, 75, height - 273);
+  value(p.attendeeName, 75, height - 273);
 
   label("CATEGORY", 75, height - 305);
   value(p.category.replace(/-/g, " ").toUpperCase(), 75, height - 323, 11);
@@ -115,28 +123,48 @@ async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
     color: rgb(0.44, 0.5, 0.59), maxWidth: 155,
   });
 
+  // Additional registration info, below the registration ID / ticket number /
+  // attendee / category column. Church/district/country are omitted for
+  // Individual and Overseas Delegate tickets (no Church relation).
+  label("TYPE", 75, height - 355);
+  value(p.registrationType, 75, height - 373, 11);
+
+  if (p.churchName) {
+    label("CHURCH", 75, height - 405);
+    value(p.churchName, 75, height - 423, 11);
+  }
+
+  const districtCountry = [p.district, p.country].filter(Boolean).join(", ");
+  if (districtCountry) {
+    label("DISTRICT / COUNTRY", 75, height - 455);
+    value(districtCountry, 75, height - 473, 11);
+  }
+
+  label("PAYMENT STATUS", 75, height - 505);
+  value(p.paymentStatusLabel, 75, height - 523, 11);
+
   // Event details
-  page.drawText("Event Details", { x: 50, y: height - 460, size: 11, font: bold, color: rgb(0.1, 0.13, 0.17) });
-  label(p.eventName, 50, height - 478);
+  page.drawText("Event Details", { x: 50, y: height - 575, size: 11, font: bold, color: rgb(0.1, 0.13, 0.17) });
+  label(p.eventName, 50, height - 593);
   const venue = [p.venueName, p.venueCity].filter(Boolean).join(", ");
   if (venue) {
-    label("VENUE", 50, height - 496);
-    value(venue, 50, height - 512, 13, accentColor);
-    if (p.eventDate) label(`Date: ${p.eventDate}`, 50, height - 530);
+    label("VENUE", 50, height - 611);
+    value(venue, 50, height - 627, 13, accentColor);
+    if (p.eventDate) label(`Date: ${p.eventDate}`, 50, height - 645);
   } else if (p.eventDate) {
-    label(`Date: ${p.eventDate}`, 50, height - 494);
+    label(`Date: ${p.eventDate}`, 50, height - 609);
   }
 
   // Footer
   page.drawText(
     "This ticket is non-transferable. Present this ticket with a valid ID at the registration desk. One scan per ticket.",
-    { x: 50, y: height - 560, size: 8, font: regular, color: rgb(0.6, 0.65, 0.72), maxWidth: 495 }
+    { x: 50, y: height - 675, size: 8, font: regular, color: rgb(0.6, 0.65, 0.72), maxWidth: 495 }
   );
 }
 
 async function generateTicketsPdf(
-  tickets: { ticketNumber: string; ticketType: "ADULT" | "YOUTH"; venueName: string; venueCity: string; qrBuffer: Buffer }[],
-  shared: Omit<TicketPageParams, "ticketNumber" | "ticketType" | "venueName" | "venueCity" | "qrBuffer" | "pageNumber" | "totalPages">
+  tickets: { ticketNumber: string; ticketType: "ADULT" | "YOUTH"; attendeeName: string; venueName: string; venueCity: string; qrBuffer: Buffer }[],
+  shared: Omit<TicketPageParams, "ticketNumber" | "ticketType" | "attendeeName" | "venueName" | "venueCity" | "qrBuffer" | "pageNumber" | "totalPages">
 ): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create();
 
@@ -145,6 +173,7 @@ async function generateTicketsPdf(
       ...shared,
       ticketNumber: tickets[i].ticketNumber,
       ticketType: tickets[i].ticketType,
+      attendeeName: tickets[i].attendeeName,
       venueName: tickets[i].venueName,
       venueCity: tickets[i].venueCity,
       qrBuffer: tickets[i].qrBuffer,
@@ -169,10 +198,6 @@ interface PendingEmailParams {
   bankAccountName: string;
   bankAccountNumber: string;
   bankBranch: string;
-  mpaisaNumber?: string;
-  mpaisaName?: string;
-  worldRemitInstructions?: string;
-  paymentMethod?: string;
   eventName: string;
   paymentType?: string;
   installmentCount?: number | null;
@@ -207,32 +232,7 @@ export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
     </table>`,
   ];
 
-  if (p.paymentMethod === "mpaisa" && p.mpaisaNumber) {
-    dataBlocks.push(`
-      ${divider()}
-      <p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#ffffff;">M-PAiSA Details</p>
-      <table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;border:1px solid rgba(255,108,0,0.2);">
-        ${pill("M-PAiSA Number", p.mpaisaNumber)}
-        ${p.mpaisaName ? pill("Name", p.mpaisaName) : ""}
-        ${pill("Amount (FJD)", `$${p.fee.toFixed(2)}`)}
-        ${pill("Reference", p.registrationId)}
-      </table>
-      <p style="margin:16px 0 0;font-size:12px;color:rgba(255,255,255,0.4);">
-        ⚠ Please use your Registration ID <strong style="color:#ffffff;">${p.registrationId}</strong> as the payment reference so we can match your transfer.
-      </p>
-    `);
-  } else if (p.paymentMethod === "world-remit" && p.worldRemitInstructions) {
-    dataBlocks.push(`
-      ${divider()}
-      <p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#ffffff;">World Remit to M-PAiSA Details</p>
-      <table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;border:1px solid rgba(255,108,0,0.2);">
-        <tr><td style="color:rgba(255,255,255,0.7);font-size:13px;white-space:pre-line;">${p.worldRemitInstructions}</td></tr>
-      </table>
-      <p style="margin:16px 0 0;font-size:12px;color:rgba(255,255,255,0.4);">
-        ⚠ Please use your Registration ID <strong style="color:#ffffff;">${p.registrationId}</strong> as the payment reference so we can match your transfer.
-      </p>
-    `);
-  } else if (p.bankAccountNumber) {
+  if (p.bankAccountNumber) {
     dataBlocks.push(`
       ${divider()}
       <p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#ffffff;">Bank Transfer Details</p>
@@ -311,11 +311,16 @@ interface TicketEmailParams {
   registrantName: string;
   registrationId: string;
   category: string;
+  registrationType: string;
+  churchName?: string;
+  district?: string;
+  country?: string;
+  paymentStatusLabel: string;
   eventName: string;
   eventDate: string;
   venueName: string;
   venueCity: string;
-  tickets: { ticketNumber: string; ticketType: "ADULT" | "YOUTH"; venueName?: string; venueCity?: string }[];
+  tickets: { ticketNumber: string; ticketType: "ADULT" | "YOUTH"; attendeeName?: string; venueName?: string; venueCity?: string }[];
   appUrl: string;
 }
 
@@ -327,6 +332,7 @@ export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
     p.tickets.map(async (t) => ({
       ticketNumber: t.ticketNumber,
       ticketType: t.ticketType,
+      attendeeName: t.attendeeName || p.registrantName,
       venueName: t.venueName ?? p.venueName,
       venueCity: t.venueCity ?? p.venueCity,
       qrBuffer: await QRCode.toBuffer(t.ticketNumber, {
@@ -340,8 +346,12 @@ export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
   // Build a single multi-page PDF (one page per ticket)
   const pdfBuffer = await generateTicketsPdf(ticketAssets, {
     registrationId: p.registrationId,
-    registrantName: p.registrantName,
     category: p.category,
+    registrationType: p.registrationType,
+    churchName: p.churchName,
+    district: p.district,
+    country: p.country,
+    paymentStatusLabel: p.paymentStatusLabel,
     eventName: p.eventName,
     eventDate: p.eventDate,
   });
@@ -373,6 +383,8 @@ export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
     `<table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;margin-bottom:24px;">
       ${pill("Registration ID", p.registrationId)}
       ${pill("Category", p.category)}
+      ${p.churchName ? pill("Church", p.churchName) : ""}
+      ${pill("Payment Status", p.paymentStatusLabel)}
       ${pill("Event", p.eventName)}
       ${pill("Date", p.eventDate)}
       ${pill("Venue", [p.venueName, p.venueCity].filter(Boolean).join(", "))}

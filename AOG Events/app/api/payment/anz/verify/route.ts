@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import { sendTicketConfirmationEmail } from '@/lib/email';
-import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues } from '@/lib/tickets';
+import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues, deriveRegistrationTypeLabel, formatPaymentStatusLabel } from '@/lib/tickets';
 import { REGISTRATION_CATEGORIES } from '@/lib/types';
 import { format } from 'date-fns';
 
@@ -85,10 +85,11 @@ export async function GET(request: Request) {
         },
         include: {
           attendees: true,
-          tickets: { select: { ticketNumber: true, ticketType: true } },
+          tickets: { include: { attendee: { select: { firstName: true, lastName: true } } } },
           event: true,
           venue: true,
           venueAllocations: { include: { venue: { select: { name: true, city: true } } } },
+          church: true,
         }
       });
 
@@ -97,7 +98,13 @@ export async function GET(request: Request) {
       let tickets = updatedRegistration.tickets;
       if (tickets.length === 0) {
         tickets = await prisma.$transaction((tx) =>
-          generateTicketsForRegistration(tx, updatedRegistration.id, updatedRegistration.adults, updatedRegistration.youth)
+          generateTicketsForRegistration(
+            tx,
+            updatedRegistration.id,
+            updatedRegistration.adults,
+            updatedRegistration.youth,
+            updatedRegistration.attendees
+          )
         );
       }
 
@@ -108,13 +115,22 @@ export async function GET(request: Request) {
 
       const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === updatedRegistration.category);
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-      const ticketsWithVenue = attachVenuesToTickets(tickets, updatedRegistration.venueAllocations);
+      const ticketsWithVenue = attachVenuesToTickets(tickets, updatedRegistration.venueAllocations).map((t) => ({
+        ...t,
+        attendeeName: t.attendee ? `${t.attendee.firstName} ${t.attendee.lastName}`.trim() : undefined,
+      }));
 
+      // Gateway payment is always treated as a single full payment.
       sendTicketConfirmationEmail({
         to: updatedRegistration.email,
         registrantName: name,
         registrationId: updatedRegistration.registrationId,
         category: catInfo?.name ?? updatedRegistration.category,
+        registrationType: deriveRegistrationTypeLabel(updatedRegistration.type, updatedRegistration.category),
+        churchName: updatedRegistration.church?.name,
+        district: updatedRegistration.church?.district ?? undefined,
+        country: updatedRegistration.church?.country,
+        paymentStatusLabel: formatPaymentStatusLabel(updatedRegistration.fee, updatedRegistration.fee),
         eventName: updatedRegistration.event?.name ?? "AOG Fiji 100th Anniversary",
         eventDate: updatedRegistration.event?.startDate
           ? format(new Date(updatedRegistration.event.startDate), "d MMMM yyyy")

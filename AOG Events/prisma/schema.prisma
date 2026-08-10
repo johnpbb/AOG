@@ -14,10 +14,10 @@ enum PaymentStatus {
 }
 
 enum PaymentMethod {
-  ONLINE // Disabled for now — no merchant account. Kept for future re-enable.
-  BANK_TRANSFER
-  MPAISA
-  WORLD_REMIT
+  ONLINE // Disabled — no merchant account. Kept for future re-enable.
+  BANK_TRANSFER // Westpac Internet Bank Transfer — the only method offered, per client confirmation.
+  MPAISA // Unused — client confirmed Westpac Bank Transfer only. Left in the enum (DB already has it) rather than a risky enum-value drop migration.
+  WORLD_REMIT // Unused — see MPAISA note above.
   CASH
 }
 
@@ -38,6 +38,13 @@ enum PaymentEntryStatus {
 }
 
 enum TicketType {
+  ADULT
+  YOUTH
+}
+
+// Kids are never named (headcount-only, no ticket), so Attendee rows only
+// ever represent an Adult or Youth.
+enum AttendeeAgeCategory {
   ADULT
   YOUTH
 }
@@ -314,10 +321,13 @@ model Attendee {
   registrationId String
   registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
 
-  firstName String
-  lastName  String
-  email     String?
-  phone     String?
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  ageCategory AttendeeAgeCategory @default(ADULT)
+
+  ticket    Ticket?
 
   createdAt DateTime @default(now())
 }
@@ -364,11 +374,10 @@ model SiteConfig {
   bankAccountName          String   @default("")
   bankAccountNumber        String   @default("")
   bankBranch               String   @default("")
-  // M-PAiSA (Locals) — mobile money number registrants transfer to directly.
+  // Unused — client confirmed Westpac Bank Transfer only, no M-PAiSA/World
+  // Remit for now. Left in place rather than a column-drop migration.
   mpaisaNumber             String   @default("")
   mpaisaName               String   @default("")
-  // World Remit transfer to M-PAiSA (Overseas) — free-text instructions since
-  // the exact recipient details/steps are provider-specific.
   worldRemitInstructions   String   @default("") @db.Text
   notificationEmail        String   @default("timoci@pacificbedbank.com")
   financeNotificationEmail String   @default("aogfj_finance@connect.com.fj")
@@ -386,6 +395,13 @@ model Ticket {
   registrationId String
   status         TicketStatus @default(ACTIVE)
   createdAt      DateTime     @default(now())
+
+  // Nullable: only set when the registration supplied named attendees (public
+  // church CSV upload / individual name fields). Admin bulk-imported and any
+  // legacy registrations have no linked Attendee, and fall back to printing
+  // the registrant's name on the ticket instead.
+  attendee   Attendee? @relation(fields: [attendeeId], references: [id], onDelete: SetNull)
+  attendeeId String?   @unique
 
   dailyCheckIns    DailyCheckIn[]
   attendanceEvents AttendanceEvent[]

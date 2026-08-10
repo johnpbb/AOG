@@ -70,8 +70,8 @@ export function validateCsvRow(
   }
 
   const paymentMethod = get("Payment Method").toLowerCase() || "bank-transfer";
-  if (!["bank-transfer", "mpaisa", "world-remit"].includes(paymentMethod)) {
-    errors.push(`Payment Method must be "bank-transfer", "mpaisa", or "world-remit" (got "${get("Payment Method")}")`);
+  if (paymentMethod !== "bank-transfer") {
+    errors.push(`Payment Method must be "bank-transfer" (got "${get("Payment Method")}")`);
   }
 
   const paymentType = get("Payment Type").toLowerCase() || "full";

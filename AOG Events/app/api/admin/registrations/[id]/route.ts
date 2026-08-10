@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { PaymentStatus, TicketStatus } from "@prisma/client";
 import { sendTicketConfirmationEmail } from "@/lib/email";
-import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues } from "@/lib/tickets";
+import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues, deriveRegistrationTypeLabel, formatPaymentStatusLabel } from "@/lib/tickets";
 import { getCurrentUser } from "@/lib/auth";
 import { format } from "date-fns";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
@@ -23,10 +23,19 @@ export async function PATCH(
     const registration = await prisma.registration.findUnique({
       where: { id },
       include: {
-        tickets: { select: { ticketNumber: true, ticketType: true }, orderBy: { ticketNumber: "asc" } },
+        tickets: {
+          select: {
+            ticketNumber: true,
+            ticketType: true,
+            attendee: { select: { firstName: true, lastName: true } },
+          },
+          orderBy: { ticketNumber: "asc" },
+        },
         venue: { select: { name: true, city: true } },
         venueAllocations: { include: { venue: { select: { name: true, city: true } } } },
         event: { select: { name: true, startDate: true } },
+        attendees: { select: { id: true, ageCategory: true } },
+        church: { select: { name: true, district: true, country: true } },
       },
     });
 
@@ -59,7 +68,13 @@ export async function PATCH(
         },
       });
       if (tickets.length === 0) {
-        tickets = await generateTicketsForRegistration(tx, id, registration.adults || registration.numberOfAttendees, registration.youth);
+        tickets = await generateTicketsForRegistration(
+          tx,
+          id,
+          registration.adults || registration.numberOfAttendees,
+          registration.youth,
+          registration.attendees
+        );
       }
     });
 
@@ -72,13 +87,23 @@ export async function PATCH(
 
     const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === registration.category);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const ticketsWithVenue = attachVenuesToTickets(tickets, registration.venueAllocations);
+    const ticketsWithVenue = attachVenuesToTickets(tickets, registration.venueAllocations).map((t) => ({
+      ...t,
+      attendeeName: t.attendee ? `${t.attendee.firstName} ${t.attendee.lastName}`.trim() : undefined,
+    }));
 
+    // This approval path always logs a single FULL Payment, so the
+    // registration is always fully paid by the time we get here.
     await sendTicketConfirmationEmail({
       to: registration.email,
       registrantName: String(registrantName),
       registrationId: registration.registrationId,
       category: catInfo?.name ?? registration.category,
+      registrationType: deriveRegistrationTypeLabel(registration.type, registration.category),
+      churchName: registration.church?.name,
+      district: registration.church?.district ?? undefined,
+      country: registration.church?.country,
+      paymentStatusLabel: formatPaymentStatusLabel(registration.fee, registration.fee),
       eventName: registration.event?.name ?? "AOG Fiji 100th Anniversary",
       eventDate: registration.event?.startDate
         ? format(new Date(registration.event.startDate), "d MMMM yyyy")

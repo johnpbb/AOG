@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { CategoryInfo, YOUTH_AGE_RANGE, KIDS_AGE_RANGE } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { CategoryInfo, YOUTH_AGE_RANGE, KIDS_YOUNGER_AGE_RANGE, KIDS_OLDER_AGE_RANGE } from "@/lib/types";
 import { PaymentTypeSelector } from "./payment-type-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,18 +40,6 @@ export function IndividualRegistrationForm({
 
   const isOverseasDelegate = category.id === "overseas-delegates";
 
-  // Online payment (ANZ eGate) is disabled for now — no merchant account yet.
-  // Overseas delegates pay via World Remit to M-PAiSA; locals pay via M-PAiSA directly.
-  const paymentMethods = isOverseasDelegate
-    ? ([
-        { id: "bank-transfer", label: "Bank Transfer", description: "Direct bank-to-bank transfer" },
-        { id: "world-remit", label: "World Remit to M-PAiSA", description: "World Remit transfer to our M-PAiSA account" },
-      ] as const)
-    : ([
-        { id: "bank-transfer", label: "Bank Transfer", description: "Direct bank-to-bank transfer" },
-        { id: "mpaisa", label: "M-PAiSA", description: "Mobile money transfer to our M-PAiSA number" },
-      ] as const);
-
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -59,12 +47,29 @@ export function IndividualRegistrationForm({
     phone: "",
     church: "",
     country: "",
-    paymentMethod: "" as "bank-transfer" | "mpaisa" | "world-remit" | "",
+    // Westpac Internet Bank Transfer is the only payment method — no merchant
+    // account for card/online payment, and no other manual method for now.
+    paymentMethod: "bank-transfer" as const,
   });
   const [adults, setAdults] = useState(1);
   const [youth, setYouth] = useState(0);
-  const [kids, setKids] = useState(0);
+  const [kidsYounger, setKidsYounger] = useState(0);
+  const [kidsOlder, setKidsOlder] = useState(0);
+  const kids = kidsYounger + kidsOlder;
   const numberOfTickets = adults + youth + kids;
+
+  // One required name row per Adult+Youth ticket (kids stay headcount-only —
+  // no ticket, no name). Index 0..adults-1 are Adult rows, the rest Youth.
+  const [attendeeNames, setAttendeeNames] = useState<{ firstName: string; lastName: string; email: string; phone: string }[]>([]);
+  useEffect(() => {
+    const size = adults + youth;
+    setAttendeeNames((prev) =>
+      Array.from({ length: size }, (_, i) => prev[i] ?? { firstName: "", lastName: "", email: "", phone: "" })
+    );
+  }, [adults, youth]);
+  const updateAttendeeName = (index: number, field: "firstName" | "lastName" | "email" | "phone", value: string) =>
+    setAttendeeNames((prev) => prev.map((a, i) => (i === index ? { ...a, [field]: value } : a)));
+  const attendeeNamesValid = attendeeNames.length > 0 && attendeeNames.every((a) => a.firstName.trim() && a.lastName.trim());
   const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
   const [installmentCount, setInstallmentCount] = useState(5);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -80,13 +85,21 @@ export function IndividualRegistrationForm({
 
   const isStep1Valid =
     formData.firstName && formData.lastName && formData.email && formData.phone && numberOfTickets > 0 &&
-    (!isOverseasDelegate || formData.country);
+    (!isOverseasDelegate || formData.country) && attendeeNamesValid;
 
   const handleSubmit = async () => {
     setIsProcessing(true);
     setError(null);
 
     try {
+      const attendees = attendeeNames.map((a, i) => ({
+        firstName: a.firstName,
+        lastName: a.lastName,
+        ageCategory: (i < adults ? "ADULT" : "YOUTH") as "ADULT" | "YOUTH",
+        email: a.email || undefined,
+        phone: a.phone || undefined,
+      }));
+
       const dbResponse = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,8 +108,7 @@ export function IndividualRegistrationForm({
           type: "individual",
           fee: totalFee,
           numberOfTickets,
-          adults,
-          youth,
+          attendees,
           kids,
           paymentType,
           installmentCount: paymentType === "partial" ? installmentCount : null,
@@ -227,10 +239,11 @@ export function IndividualRegistrationForm({
                 Including yourself — register friends & family, by age group
               </p>
             </div>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <AttendeeCountStepper id="adults" label="Adults" value={adults} onChange={setAdults} />
               <AttendeeCountStepper id="youth" label={`NextGen / Youth (${YOUTH_AGE_RANGE})`} value={youth} onChange={setYouth} />
-              <AttendeeCountStepper id="kids" label={`Kids (${KIDS_AGE_RANGE})`} value={kids} onChange={setKids} />
+              <AttendeeCountStepper id="kidsYounger" label={`Kids (${KIDS_YOUNGER_AGE_RANGE})`} value={kidsYounger} onChange={setKidsYounger} />
+              <AttendeeCountStepper id="kidsOlder" label={`Kids (${KIDS_OLDER_AGE_RANGE})`} value={kidsOlder} onChange={setKidsOlder} />
             </div>
             <div className="flex items-center justify-between text-sm pt-1 border-t border-border">
               <span className="text-muted-foreground">Total Attendees</span>
@@ -256,6 +269,51 @@ export function IndividualRegistrationForm({
             </div>
           </div>
 
+          {/* Named attendees — one per Adult/Youth ticket */}
+          {attendeeNames.length > 0 && (
+            <div className="p-5 rounded-xl border-2 border-border bg-secondary/30 space-y-4">
+              <div>
+                <FieldLabel>Name Each Ticket</FieldLabel>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Every adult and youth ticket is printed with the attendee&apos;s own name.
+                  {kids > 0 && " Kids are counted above but don't need to be named."}
+                </p>
+              </div>
+              <div className="space-y-4">
+                {attendeeNames.map((a, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">
+                        Attendee {i + 1} <span className="text-muted-foreground font-normal">({i < adults ? "Adult" : "Youth"})</span>
+                      </span>
+                      {i === 0 && (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline"
+                          onClick={() =>
+                            setAttendeeNames((prev) =>
+                              prev.map((row, idx) =>
+                                idx === 0 ? { ...row, firstName: formData.firstName, lastName: formData.lastName } : row
+                              )
+                            )
+                          }
+                        >
+                          Use my details above
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Input placeholder="First name" value={a.firstName}
+                        onChange={(e) => updateAttendeeName(i, "firstName", e.target.value)} />
+                      <Input placeholder="Last name" value={a.lastName}
+                        onChange={(e) => updateAttendeeName(i, "lastName", e.target.value)} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-4">
             <div className="flex gap-2">
               <Button variant="outline" onClick={onBack}>Back</Button>
@@ -271,38 +329,23 @@ export function IndividualRegistrationForm({
         <div className="space-y-6">
           <div className="text-center">
             <h2 className="text-2xl font-semibold text-foreground">Payment</h2>
-            <p className="text-muted-foreground mt-1">Select your payment method</p>
+            <p className="text-muted-foreground mt-1">Payment via Westpac Internet Bank Transfer</p>
           </div>
 
-          <div className="space-y-3">
-            <FieldLabel>Payment Method</FieldLabel>
-            <div className="grid gap-3 md:grid-cols-2">
-              {paymentMethods.map((method) => (
-                <button key={method.id} onClick={() => updateFormData("paymentMethod", method.id)}
-                  className={cn("p-4 rounded-lg border text-left transition-all",
-                    formData.paymentMethod === method.id
-                      ? "border-primary bg-primary/5 ring-1 ring-primary"
-                      : "border-border hover:border-primary/50"
-                  )}>
-                  <div className="font-medium text-foreground">{method.label}</div>
-                  <div className="text-sm text-muted-foreground mt-1">{method.description}</div>
-                </button>
-              ))}
+          <div className="p-4 rounded-lg border border-border bg-secondary/30">
+            <div className="font-medium text-foreground">Bank Transfer</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              Pay via Westpac Internet Bank Transfer. Account details are provided after you submit this form.
             </div>
-            {!formData.paymentMethod && (
-              <p className="text-xs text-muted-foreground">Select a payment method above to continue.</p>
-            )}
           </div>
 
-          {formData.paymentMethod && (
-            <PaymentTypeSelector
-              paymentType={paymentType}
-              onPaymentTypeChange={setPaymentType}
-              installmentCount={installmentCount}
-              onInstallmentCountChange={setInstallmentCount}
-              totalFee={totalFee}
-            />
-          )}
+          <PaymentTypeSelector
+            paymentType={paymentType}
+            onPaymentTypeChange={setPaymentType}
+            installmentCount={installmentCount}
+            onInstallmentCountChange={setInstallmentCount}
+            totalFee={totalFee}
+          />
 
           {/* Summary */}
           <div className="p-4 rounded-lg bg-secondary space-y-2 text-sm">
@@ -330,7 +373,7 @@ export function IndividualRegistrationForm({
               <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
               <Button variant="ghost" onClick={onCancel}>Cancel</Button>
             </div>
-            <Button className="w-full sm:w-auto" onClick={handleSubmit} disabled={!formData.paymentMethod || !turnstileToken || isProcessing}>
+            <Button className="w-full sm:w-auto" onClick={handleSubmit} disabled={!turnstileToken || isProcessing}>
               {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : "Complete Registration"}
             </Button>
           </div>

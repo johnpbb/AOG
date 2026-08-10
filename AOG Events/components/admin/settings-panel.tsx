@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save, Building2, Smartphone, Send, Bell, Loader2, CheckCircle } from "lucide-react";
+import { Save, Building2, Bell, Loader2, CheckCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
 
 interface SiteConfig {
@@ -12,9 +11,6 @@ interface SiteConfig {
   bankAccountName: string;
   bankAccountNumber: string;
   bankBranch: string;
-  mpaisaNumber: string;
-  mpaisaName: string;
-  worldRemitInstructions: string;
   notificationEmail: string;
 }
 
@@ -23,9 +19,6 @@ const empty: SiteConfig = {
   bankAccountName: "",
   bankAccountNumber: "",
   bankBranch: "",
-  mpaisaNumber: "",
-  mpaisaName: "",
-  worldRemitInstructions: "",
   notificationEmail: "",
 };
 
@@ -45,9 +38,6 @@ export function SettingsPanel() {
           bankAccountName: data.bankAccountName ?? "",
           bankAccountNumber: data.bankAccountNumber ?? "",
           bankBranch: data.bankBranch ?? "",
-          mpaisaNumber: data.mpaisaNumber ?? "",
-          mpaisaName: data.mpaisaName ?? "",
-          worldRemitInstructions: data.worldRemitInstructions ?? "",
           notificationEmail: data.notificationEmail ?? "",
         });
       })
@@ -91,8 +81,8 @@ export function SettingsPanel() {
       <div>
         <h2 className="text-2xl font-bold text-foreground">Settings</h2>
         <p className="text-muted-foreground text-sm mt-1">
-          Configure manual payment details and notification preferences. Online payment is disabled for now — all
-          registrations are paid via Bank Transfer, M-PAiSA, or World Remit and verified manually.
+          Configure bank details and notification preferences. Online payment is disabled — Westpac Internet Bank
+          Transfer is the only payment method, verified manually.
         </p>
       </div>
 
@@ -119,7 +109,7 @@ export function SettingsPanel() {
             <FieldLabel htmlFor="bankName">Bank Name</FieldLabel>
             <Input
               id="bankName"
-              placeholder="e.g. BSP Fiji"
+              placeholder="e.g. Westpac"
               value={config.bankName}
               onChange={(e) => update("bankName", e.target.value)}
             />
@@ -155,65 +145,6 @@ export function SettingsPanel() {
             />
           </Field>
         </FieldGroup>
-      </div>
-
-      {/* M-PAiSA Details */}
-      <div className="rounded-xl border border-border bg-card p-6 space-y-5">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Smartphone className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-foreground">M-PAiSA Details (Locals)</h3>
-            <p className="text-xs text-muted-foreground">Displayed to local registrants on the payment pending screen and in emails.</p>
-          </div>
-        </div>
-
-        <FieldGroup className="grid gap-5 md:grid-cols-2">
-          <Field>
-            <FieldLabel htmlFor="mpaisaNumber">M-PAiSA Number</FieldLabel>
-            <Input
-              id="mpaisaNumber"
-              placeholder="e.g. 9991234"
-              value={config.mpaisaNumber}
-              onChange={(e) => update("mpaisaNumber", e.target.value)}
-            />
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="mpaisaName">Name on Account</FieldLabel>
-            <Input
-              id="mpaisaName"
-              placeholder="e.g. Assemblies of God Fiji"
-              value={config.mpaisaName}
-              onChange={(e) => update("mpaisaName", e.target.value)}
-            />
-          </Field>
-        </FieldGroup>
-      </div>
-
-      {/* World Remit Details */}
-      <div className="rounded-xl border border-border bg-card p-6 space-y-5">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Send className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-foreground">World Remit to M-PAiSA (Overseas)</h3>
-            <p className="text-xs text-muted-foreground">Free-text instructions shown to overseas delegates for transferring via World Remit to our M-PAiSA account.</p>
-          </div>
-        </div>
-
-        <Field>
-          <FieldLabel htmlFor="worldRemitInstructions">Instructions</FieldLabel>
-          <Textarea
-            id="worldRemitInstructions"
-            rows={5}
-            placeholder="e.g. Send via World Remit to M-PAiSA number 9991234, recipient name Assemblies of God Fiji, country Fiji…"
-            value={config.worldRemitInstructions}
-            onChange={(e) => update("worldRemitInstructions", e.target.value)}
-          />
-        </Field>
       </div>
 
       {/* Notifications */}

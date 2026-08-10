@@ -104,7 +104,13 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
 ];
 
 export const YOUTH_AGE_RANGE = "15–25yrs";
+// Collected as two separate sub-brackets in the registration forms (see
+// KIDS_YOUNGER_AGE_RANGE / KIDS_OLDER_AGE_RANGE) but summed into a single
+// `kids` count everywhere else — capacity caps, pools, and the Registration
+// row itself don't distinguish between the two.
 export const KIDS_AGE_RANGE = "5–10yrs; 11–14yrs";
+export const KIDS_YOUNGER_AGE_RANGE = "5–10yrs";
+export const KIDS_OLDER_AGE_RANGE = "11–14yrs";
 
 // Absolute final date for all installment payments (per client spec).
 export const INSTALLMENT_DEADLINE = new Date("2026-09-30T23:59:59+12:00");
@@ -141,7 +147,7 @@ export interface ChurchRegistration {
   numberOfAttendees: number;
   attendees: Attendee[];
   venue: string;
-  paymentMethod: "bank-transfer" | "mpaisa" | "world-remit";
+  paymentMethod: "bank-transfer";
   paymentStatus: "pending" | "completed" | "failed";
 }
 
@@ -153,7 +159,7 @@ export interface IndividualRegistration {
   phone: string;
   church?: string;
   venue: string;
-  paymentMethod: "bank-transfer" | "mpaisa" | "world-remit";
+  paymentMethod: "bank-transfer";
   paymentStatus: "pending" | "completed" | "failed";
 }
 
