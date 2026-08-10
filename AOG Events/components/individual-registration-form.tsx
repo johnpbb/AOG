@@ -256,12 +256,12 @@ export function IndividualRegistrationForm({
             </div>
           </div>
 
-          <div className="flex justify-between pt-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-4">
             <div className="flex gap-2">
               <Button variant="outline" onClick={onBack}>Back</Button>
               <Button variant="ghost" onClick={onCancel}>Cancel</Button>
             </div>
-            <Button onClick={() => setStep(2)} disabled={!isStep1Valid || overAttendeeLimit}>Continue to Payment</Button>
+            <Button className="w-full sm:w-auto" onClick={() => setStep(2)} disabled={!isStep1Valid || overAttendeeLimit}>Continue to Payment</Button>
           </div>
         </div>
       )}
@@ -325,12 +325,12 @@ export function IndividualRegistrationForm({
             <TurnstileWidget onVerify={setTurnstileToken} />
           </div>
 
-          <div className="flex justify-between pt-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-4">
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
               <Button variant="ghost" onClick={onCancel}>Cancel</Button>
             </div>
-            <Button onClick={handleSubmit} disabled={!formData.paymentMethod || !turnstileToken || isProcessing}>
+            <Button className="w-full sm:w-auto" onClick={handleSubmit} disabled={!formData.paymentMethod || !turnstileToken || isProcessing}>
               {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : "Complete Registration"}
             </Button>
           </div>

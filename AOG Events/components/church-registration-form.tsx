@@ -310,12 +310,12 @@ export function ChurchRegistrationForm({
             <TurnstileWidget onVerify={setTurnstileToken} />
           </div>
 
-          <div className="flex justify-between pt-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-4">
             <div className="flex gap-2">
               <Button variant="outline" onClick={onBack}>Back</Button>
               <Button variant="ghost" onClick={onCancel}>Cancel</Button>
             </div>
-            <Button onClick={handleSubmit} disabled={!isFormValid || overAttendeeLimit || !turnstileToken || isProcessing}>
+            <Button className="w-full sm:w-auto" onClick={handleSubmit} disabled={!isFormValid || overAttendeeLimit || !turnstileToken || isProcessing}>
               {isProcessing
                 ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting…</>
                 : "Submit Registration"}
