@@ -2,9 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
-import { ArrowRight, ArrowLeft, Calendar, MapPin, Users, Building2 } from "lucide-react";
-import { format } from "date-fns";
-import { sanitizeRichText } from "@/lib/sanitize-html";
+import { ArrowRight, ArrowLeft, MapPin, Users, Building2 } from "lucide-react";
+import { EventScheduleTabs } from "@/components/event-schedule-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +31,6 @@ export default async function EventPage({ params }: Props) {
   const totalRegistered = event.venues.reduce((s, v) => s + v.currentRegistrations, 0);
   const pct = totalCapacity > 0 ? Math.round((totalRegistered / totalCapacity) * 100) : 0;
   const seatsLeft = totalCapacity - totalRegistered;
-  const scheduleHtml = sanitizeRichText(event.scheduleTable);
 
   return (
     <div className="bg-brand-black text-brand-white min-h-screen">
@@ -54,7 +52,7 @@ export default async function EventPage({ params }: Props) {
 
       {/* ── BANNER ──────────────────────────────────────────────────────────── */}
       {event.bannerUrl ? (
-        <div className="relative h-[380px] overflow-hidden mt-[68px]">
+        <div className="relative h-[380px] overflow-hidden">
           <Image src={event.bannerUrl} alt={event.name} fill className="object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 px-10 pb-9">
@@ -66,7 +64,7 @@ export default async function EventPage({ params }: Props) {
           </div>
         </div>
       ) : (
-        <div className="mt-[68px] h-[260px] tapa-bg relative flex items-center">
+        <div className="h-[260px] tapa-bg relative flex items-center">
           <div className="absolute inset-0 bg-black/55" />
           <div className="max-w-[1200px] mx-auto px-10 relative z-10">
             <h1 className="text-[clamp(28px,4vw,48px)] font-extrabold text-brand-white leading-[1.35] font-boldonse">
@@ -87,15 +85,7 @@ export default async function EventPage({ params }: Props) {
 
           {/* ── Main ────────────────────────────────────────────────────────── */}
           <div>
-            {scheduleHtml && (
-              <div className="mb-12">
-                <h2 className="text-xl font-bold text-brand-white mb-5">Event Schedule</h2>
-                <div
-                  className="prose-dark overflow-x-auto rounded-xl border border-white/10 p-5"
-                  dangerouslySetInnerHTML={{ __html: scheduleHtml }}
-                />
-              </div>
-            )}
+            <EventScheduleTabs />
 
             {event.venues.length > 0 && (
               <div>
@@ -138,53 +128,29 @@ export default async function EventPage({ params }: Props) {
             )}
           </div>
 
-          {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+          {/* ── Sidebar CTA ─────────────────────────────────────────────────── */}
           <div className="lg:sticky lg:top-[92px]">
-            <div className="bg-white/[0.04] border border-brand-orange/20 rounded-2xl p-7">
-              <h2 className="text-base font-bold text-brand-white mb-6">Event Overview</h2>
+            <div className="bg-white/[0.04] border border-brand-orange/20 rounded-2xl p-7 text-center">
+              <h2 className="text-lg font-bold text-brand-white mb-2">Reserve Your Place</h2>
 
-              <div className="flex flex-col gap-[18px]">
-                {event.startDate && (
-                  <div className="flex items-start gap-3">
-                    <Calendar size={16} color="var(--brand-orange)" className="mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold text-brand-white">
-                        {format(new Date(event.startDate), "EEEE, d MMMM yyyy")}
-                      </p>
-                      {event.endDate && (
-                        <p className="text-xs text-white/40 mt-0.5">
-                          to {format(new Date(event.endDate), "d MMMM yyyy")}
-                        </p>
-                      )}
-                    </div>
+              {totalCapacity > 0 && (
+                <>
+                  <p className="text-sm text-white/50 flex items-center justify-center gap-1.5 mb-3">
+                    <Users size={13} color="var(--brand-orange)" />
+                    {seatsLeft > 0 ? `${seatsLeft.toLocaleString()} seats remaining` : "Fully booked"}
+                  </p>
+                  <div className="h-1 bg-white/10 rounded-sm overflow-hidden mb-6">
+                    <div
+                      className={`h-full rounded-sm ${pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-brand-orange"}`}
+                      style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
                   </div>
-                )}
-
-                {event.location && (
-                  <div className="flex items-center gap-3">
-                    <MapPin size={16} color="var(--brand-orange)" className="shrink-0" />
-                    <p className="text-sm text-brand-white">{event.location}</p>
-                  </div>
-                )}
-
-                {totalCapacity > 0 && (
-                  <div className="flex items-start gap-3">
-                    <Users size={16} color="var(--brand-orange)" className="mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm text-brand-white">
-                        {seatsLeft > 0 ? `${seatsLeft.toLocaleString()} seats available` : "Fully booked"}
-                      </p>
-                      <p className="text-xs text-white/40 mt-0.5">{pct}% capacity</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-7 h-px bg-white/8" />
+                </>
+              )}
 
               <Link
                 href={`/events/${slug}/register`}
-                className="mt-6 flex items-center justify-center gap-2 bg-brand-orange text-brand-white px-5 py-[13px] rounded-lg font-bold text-sm no-underline tracking-[0.02em]"
+                className="flex items-center justify-center gap-2 bg-brand-orange text-brand-white px-5 py-[13px] rounded-lg font-bold text-sm no-underline tracking-[0.02em]"
               >
                 Register Now <ArrowRight size={15} />
               </Link>

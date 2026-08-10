@@ -45,7 +45,6 @@ export async function PUT(
       bannerUrl,
       location,
       slug,
-      scheduleTable,
     } = body;
 
     const event = await prisma.event.update({
@@ -60,7 +59,6 @@ export async function PUT(
         ...(bannerUrl !== undefined && { bannerUrl }),
         ...(location !== undefined && { location }),
         ...(slug !== undefined && { slug }),
-        ...(scheduleTable !== undefined && { scheduleTable }),
       },
     });
 

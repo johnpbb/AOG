@@ -3,6 +3,9 @@ import Image from "next/image";
 import { ArrowRight, Calendar, MapPin, Users, Building2, ChevronDown } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
+import { HeroSlider } from "@/components/hero-slider";
+
+const HERO_IMAGES = ["/images/hero/choir1.jpg", "/images/hero/choir2.jpg", "/images/hero/choir3.jpg"];
 
 export const dynamic = "force-dynamic";
 
@@ -42,8 +45,7 @@ export default async function HomePage() {
 
       {/* ── HERO ────────────────────────────────────────────────────────────── */}
       <section className="min-h-screen bg-brand-black flex items-center relative overflow-hidden">
-        <div className="absolute left-0 top-0 bottom-0 w-[72px] tapa-strip-y" aria-hidden="true" />
-        <div className="absolute right-0 top-0 bottom-0 w-[72px] tapa-strip-y" aria-hidden="true" />
+        <HeroSlider images={HERO_IMAGES} />
         <div className="absolute inset-0 brand-hero-glow pointer-events-none" />
 
         <div className="max-w-[820px] mx-auto px-6 sm:px-10 md:px-16 lg:px-[100px] pt-[120px] pb-[100px] text-center relative z-10">
@@ -105,13 +107,13 @@ export default async function HomePage() {
 
           <div className="text-center mb-16">
             <p className="text-xs font-bold tracking-[0.22em] uppercase text-brand-orange mb-[14px]">
-              Centennial Celebrations
+              Join The Celebration
             </p>
             <h2 className="text-[clamp(32px,5vw,54px)] font-extrabold text-brand-black leading-[1.3] font-boldonse">
               Upcoming Events
             </h2>
             <p className="mt-4 text-[17px] text-[#666] max-w-[520px] mx-auto leading-[1.7]">
-              Register for AOG Fiji centennial events taking place across the Pacific
+              Discover what&apos;s next and register for events happening near you.
             </p>
           </div>
 

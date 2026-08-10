@@ -161,10 +161,6 @@ model Event {
   status      EventStatus @default(DRAFT)
   bannerUrl   String? // Hero image URL
   location    String? // General location label e.g. "Suva, Fiji"
-  // Raw tab-separated table pasted by an admin (e.g. copied straight out of
-  // Excel/Google Sheets) — parsed and rendered as the public "Event Schedule"
-  // table. See lib/schedule-table.ts for the parsing/rendering rules.
-  scheduleTable String? @db.Text
 
   // Slug for friendly URLs e.g. "aog-100th-anniversary"
   slug String @unique

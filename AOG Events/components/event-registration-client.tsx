@@ -9,7 +9,7 @@ import { RegistrationSuccess } from "@/components/registration-success";
 import { ChurchAutocomplete, ChurchOption } from "@/components/church-autocomplete";
 import { GlossarySidebar } from "@/components/glossary-sidebar";
 import { REGISTRATION_CATEGORIES, CategoryInfo } from "@/lib/types";
-import { ArrowLeft, Building, User } from "lucide-react";
+import { ArrowLeft, Building, User, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Venue {
@@ -35,7 +35,7 @@ interface Props {
   event: Event;
 }
 
-type RegistrationPath = "church" | "individual";
+type RegistrationPath = "church" | "individual" | "overseas";
 type RegistrationStep = "entry" | "category" | "form" | "success";
 
 export function EventRegistrationClient({ event }: Props) {
@@ -53,18 +53,10 @@ export function EventRegistrationClient({ event }: Props) {
     installmentCount?: number | null;
   } | null>(null);
 
-  const categoriesForPath = (() => {
-    if (path === "church") {
-      return REGISTRATION_CATEGORIES.filter((c) => c.type === "church");
-    }
-    if (path === "individual") {
-      // Per the client's 3-category matrix (2026-08-10): "Individuals &
-      // Overseas Residents/Churches" is one public-facing bucket covering
-      // both Individual Attendee and Overseas Delegates.
-      return REGISTRATION_CATEGORIES.filter((c) => c.type === "individual");
-    }
-    return [];
-  })();
+  // The category step (church-size picker) now only ever applies to the
+  // church path — Individual and Overseas Delegates are single categories
+  // selected directly at entry, so they skip it entirely.
+  const churchCategories = REGISTRATION_CATEGORIES.filter((c) => c.type === "church");
 
   const handleCategorySelect = (category: CategoryInfo) => {
     setSelectedCategory(category);
@@ -75,12 +67,21 @@ export function EventRegistrationClient({ event }: Props) {
     if (!path) return;
     if (path === "church" && !selectedChurch) return;
 
+    if (path === "individual" || path === "overseas") {
+      const category = REGISTRATION_CATEGORIES.find(
+        (c) => c.id === (path === "individual" ? "individual" : "overseas-delegates")
+      );
+      setSelectedCategory(category ?? null);
+      setStep("form");
+      return;
+    }
+
     // If we know the church's HQ-reported size, skip straight to the form
     // instead of making them click through a category step for a choice
     // that's already made — they can still change it via "Back to
     // Categories" on the form if it's wrong.
     const knownCategory = selectedChurch?.category
-      ? categoriesForPath.find((c) => c.id === selectedChurch.category)
+      ? churchCategories.find((c) => c.id === selectedChurch.category)
       : undefined;
 
     if (knownCategory) {
@@ -125,12 +126,13 @@ export function EventRegistrationClient({ event }: Props) {
     setSelectedCategory(null);
   };
 
-  const handleBackToCategory = () => setStep("category");
-
+  // Only the church path can pass through the category step, so "of 3" vs
+  // "of 2" depends on which entry option was picked.
+  const totalSteps = path === "church" ? 3 : 2;
   const stepLabels: Record<typeof step, string> = {
-    entry: "Step 1 of 3: Who are you registering?",
+    entry: `Step 1 of ${totalSteps}: Who are you registering?`,
     category: "Step 2 of 3: Select Category",
-    form: "Step 3 of 3: Registration Form",
+    form: `Step ${totalSteps} of ${totalSteps}: Registration Form`,
     success: "Registration submitted",
   };
 
@@ -155,11 +157,7 @@ export function EventRegistrationClient({ event }: Props) {
         </Button>
       )}
       {step === "form" && (
-        <Button
-          variant="ghost"
-          onClick={selectedCategory?.type === "church" ? handleBackToEntry : handleBackToCategory}
-          className="gap-2 -ml-2"
-        >
+        <Button variant="ghost" onClick={handleBackToEntry} className="gap-2 -ml-2">
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
@@ -173,7 +171,7 @@ export function EventRegistrationClient({ event }: Props) {
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-3">
             <button
               onClick={() => { setPath("church"); setSelectedChurch(null); }}
               className={`p-4 rounded-lg border text-left transition-all ${path === "church" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
@@ -187,8 +185,16 @@ export function EventRegistrationClient({ event }: Props) {
               className={`p-4 rounded-lg border text-left transition-all ${path === "individual" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
             >
               <User className="h-5 w-5 text-muted-foreground mb-2" />
-              <p className="font-medium text-foreground">Individuals & Overseas Residents/Churches</p>
-              <p className="text-sm text-muted-foreground mt-1">Personal registration, overseas delegates, or anyone who doesn't fit a local church category.</p>
+              <p className="font-medium text-foreground">Individual</p>
+              <p className="text-sm text-muted-foreground mt-1">Personal registration — register yourself and up to 9 friends or family.</p>
+            </button>
+            <button
+              onClick={() => { setPath("overseas"); setSelectedChurch(null); }}
+              className={`p-4 rounded-lg border text-left transition-all ${path === "overseas" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+            >
+              <Globe className="h-5 w-5 text-muted-foreground mb-2" />
+              <p className="font-medium text-foreground">Overseas Delegates</p>
+              <p className="text-sm text-muted-foreground mt-1">International guests and delegates.</p>
             </button>
           </div>
 
@@ -230,7 +236,7 @@ export function EventRegistrationClient({ event }: Props) {
           </div>
 
           <div className="space-y-3">
-            {categoriesForPath.map((category) => (
+            {churchCategories.map((category) => (
               <CategoryCard
                 key={category.id}
                 category={category}
@@ -257,7 +263,7 @@ export function EventRegistrationClient({ event }: Props) {
             ) : (
               <IndividualRegistrationForm
                 category={selectedCategory}
-                onBack={handleBackToCategory}
+                onBack={handleBackToEntry}
                 onCancel={handleCancel}
                 onSubmit={handleFormSubmit}
                 eventId={event.id}
