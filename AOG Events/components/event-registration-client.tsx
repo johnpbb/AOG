@@ -155,7 +155,11 @@ export function EventRegistrationClient({ event }: Props) {
         </Button>
       )}
       {step === "form" && (
-        <Button variant="ghost" onClick={handleBackToCategory} className="gap-2 -ml-2">
+        <Button
+          variant="ghost"
+          onClick={selectedCategory?.type === "church" ? handleBackToEntry : handleBackToCategory}
+          className="gap-2 -ml-2"
+        >
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
@@ -245,7 +249,7 @@ export function EventRegistrationClient({ event }: Props) {
               <ChurchRegistrationForm
                 category={selectedCategory}
                 church={selectedChurch}
-                onBack={handleBackToCategory}
+                onBack={handleBackToEntry}
                 onCancel={handleCancel}
                 onSubmit={handleFormSubmit}
                 eventId={event.id}

@@ -38,6 +38,8 @@ export function AttendeeCsvUpload({ onChange }: AttendeeCsvUploadProps) {
 
   const validRows = rows?.filter((r) => r.errors.length === 0 && r.attendee) ?? [];
   const invalidCount = rows ? rows.length - validRows.length : 0;
+  const adultCount = validRows.filter((r) => r.attendee?.ageCategory === "ADULT").length;
+  const youthCount = validRows.filter((r) => r.attendee?.ageCategory === "YOUTH").length;
 
   useEffect(() => {
     if (!rows) {
@@ -136,6 +138,23 @@ export function AttendeeCsvUpload({ onChange }: AttendeeCsvUploadProps) {
               </span>
             )}
           </div>
+
+          {validRows.length > 0 && (
+            <div className="flex items-center gap-6 p-3 rounded-lg bg-background border border-border text-sm">
+              <div>
+                <span className="text-muted-foreground">Adults</span>{" "}
+                <span className="font-semibold text-foreground">{adultCount}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Youth</span>{" "}
+                <span className="font-semibold text-foreground">{youthCount}</span>
+              </div>
+              <div className="ml-auto">
+                <span className="text-muted-foreground">Total</span>{" "}
+                <span className="font-semibold text-primary">{validRows.length}</span>
+              </div>
+            </div>
+          )}
 
           <div className="max-h-64 overflow-y-auto border border-border rounded-lg">
             <table className="w-full text-sm">
