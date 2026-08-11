@@ -180,7 +180,9 @@ export function IndividualRegistrationForm({
         <div className="space-y-6">
           <div className="text-center">
             <h2 className="text-2xl font-semibold text-foreground">Your Details</h2>
-            <p className="text-muted-foreground mt-1">Enter your information for {category.name}</p>
+            <p className="text-muted-foreground mt-1">
+              Enter your information for {category.id === "overseas-delegates" ? "Overseas Attendee" : category.name}
+            </p>
           </div>
 
           <FieldGroup className="grid gap-6 md:grid-cols-2">

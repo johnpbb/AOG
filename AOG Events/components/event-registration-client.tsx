@@ -144,20 +144,26 @@ export function EventRegistrationClient({ event }: Props) {
       {step === "entry" && (
         <Link
           href={`/events/${event.slug}`}
-          className="inline-flex items-center gap-2 text-muted-foreground text-sm no-underline -ml-2 w-fit hover:text-foreground"
+          className="inline-flex items-center gap-2 bg-brand-orange text-brand-white text-sm font-bold px-4 py-2 rounded-lg no-underline w-fit tracking-[0.02em] hover:bg-brand-orange/90"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
         </Link>
       )}
       {step === "category" && (
-        <Button variant="ghost" onClick={handleBackToEntry} className="gap-2 -ml-2">
+        <Button
+          onClick={handleBackToEntry}
+          className="gap-2 bg-brand-orange text-brand-white font-bold tracking-[0.02em] hover:bg-brand-orange/90"
+        >
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
       )}
       {step === "form" && (
-        <Button variant="ghost" onClick={handleBackToEntry} className="gap-2 -ml-2">
+        <Button
+          onClick={handleBackToEntry}
+          className="gap-2 bg-brand-orange text-brand-white font-bold tracking-[0.02em] hover:bg-brand-orange/90"
+        >
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
@@ -193,7 +199,7 @@ export function EventRegistrationClient({ event }: Props) {
               className={`p-4 rounded-lg border text-left transition-all ${path === "overseas" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
             >
               <Globe className="h-5 w-5 text-muted-foreground mb-2" />
-              <p className="font-medium text-foreground">Overseas Delegates</p>
+              <p className="font-medium text-foreground">Overseas</p>
               <p className="text-sm text-muted-foreground mt-1">International guests and delegates.</p>
             </button>
           </div>
