@@ -69,7 +69,8 @@ export function IndividualRegistrationForm({
   }, [adults, youth]);
   const updateAttendeeName = (index: number, field: "firstName" | "lastName" | "email" | "phone", value: string) =>
     setAttendeeNames((prev) => prev.map((a, i) => (i === index ? { ...a, [field]: value } : a)));
-  const attendeeNamesValid = attendeeNames.length > 0 && attendeeNames.every((a) => a.firstName.trim() && a.lastName.trim());
+  const attendeeNamesValid =
+    attendeeNames.length > 0 && attendeeNames.every((a) => a.firstName.trim() && a.lastName.trim() && a.email.trim());
   const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
   const [installmentCount, setInstallmentCount] = useState(5);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -275,7 +276,7 @@ export function IndividualRegistrationForm({
               <div>
                 <FieldLabel>Name Each Ticket</FieldLabel>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Every adult and youth ticket is printed with the attendee&apos;s own name.
+                  Every adult and youth ticket is printed with the attendee&apos;s own name and email.
                   {kids > 0 && " Kids are counted above but don't need to be named."}
                 </p>
               </div>
@@ -293,7 +294,9 @@ export function IndividualRegistrationForm({
                           onClick={() =>
                             setAttendeeNames((prev) =>
                               prev.map((row, idx) =>
-                                idx === 0 ? { ...row, firstName: formData.firstName, lastName: formData.lastName } : row
+                                idx === 0
+                                  ? { ...row, firstName: formData.firstName, lastName: formData.lastName, email: formData.email }
+                                  : row
                               )
                             )
                           }
@@ -307,6 +310,8 @@ export function IndividualRegistrationForm({
                         onChange={(e) => updateAttendeeName(i, "firstName", e.target.value)} />
                       <Input placeholder="Last name" value={a.lastName}
                         onChange={(e) => updateAttendeeName(i, "lastName", e.target.value)} />
+                      <Input className="md:col-span-2" type="email" placeholder="Email address" value={a.email}
+                        onChange={(e) => updateAttendeeName(i, "email", e.target.value)} />
                     </div>
                   </div>
                 ))}
