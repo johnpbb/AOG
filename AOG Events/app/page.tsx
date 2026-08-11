@@ -5,7 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
 import { HeroSlider } from "@/components/hero-slider";
 
-const HERO_IMAGES = ["/images/hero/choir1.jpg", "/images/hero/choir2.jpg", "/images/hero/choir3.jpg"];
+const HERO_IMAGES = Array.from(
+  { length: 10 },
+  (_, i) => `/images/hero/AG100-2026-${i + 1}.webp`
+);
 
 export const dynamic = "force-dynamic";
 
