@@ -186,7 +186,7 @@ export function RegistrationsList() {
                 <SelectItem value="medium-church">Medium Church</SelectItem>
                 <SelectItem value="small-church">Small Church</SelectItem>
                 <SelectItem value="individual">Individual</SelectItem>
-                <SelectItem value="overseas-delegates">Overseas Delegates</SelectItem>
+                <SelectItem value="overseas">Overseas</SelectItem>
               </SelectContent>
             </Select>
             <Select value={paymentFilter} onValueChange={setPaymentFilter}>
@@ -240,7 +240,7 @@ export function RegistrationsList() {
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {reg.email}
-                            {reg.category === "overseas-delegates" && formData.country ? ` · ${formData.country}` : ""}
+                            {reg.category === "overseas" && formData.country ? ` · ${formData.country}` : ""}
                           </div>
                         </div>
                       </TableCell>

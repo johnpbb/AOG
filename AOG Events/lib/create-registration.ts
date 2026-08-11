@@ -78,7 +78,7 @@ export interface HeadcountInput {
  *    real ceiling on total attendance is venue capacity, not an aggregate
  *    pool, since any number of churches may register within a size bracket.
  *  - pool: an aggregate cap shared across every registration in the category
- *    (Individual, Overseas Delegates), checked as three independent
+ *    (Individual, Overseas), checked as three independent
  *    adults/youth/kids sub-pools.
  * `excludeRegistrationId` lets an amendment compare its new totals against
  * the pool with its own prior reservation left out, instead of a delta.

@@ -1,4 +1,4 @@
-// ISO country names for the Overseas Delegates registration form.
+// ISO country names for the Overseas registration form.
 export const COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "American Samoa", "Andorra", "Angola",
   "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria",

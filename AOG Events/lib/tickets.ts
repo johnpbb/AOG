@@ -95,11 +95,11 @@ export function summarizeTicketVenues(tickets: { venueName: string }[]): string 
 }
 
 // A friendly registration-type label for the ticket — coarser than the raw
-// `type` enum, since Overseas Delegates are technically type=INDIVIDUAL but
-// warrant their own label on the ticket.
+// `type` enum, since Overseas is technically type=INDIVIDUAL but warrants
+// its own label on the ticket.
 export function deriveRegistrationTypeLabel(type: string, category: string): string {
   if ((type || "").toUpperCase() === "CHURCH") return "Church";
-  if (category === "overseas-delegates") return "Overseas Delegate";
+  if (category === "overseas") return "Overseas";
   return "Individual";
 }
 

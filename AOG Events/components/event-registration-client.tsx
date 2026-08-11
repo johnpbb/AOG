@@ -54,7 +54,7 @@ export function EventRegistrationClient({ event }: Props) {
   } | null>(null);
 
   // The category step (church-size picker) now only ever applies to the
-  // church path — Individual and Overseas Delegates are single categories
+  // church path — Individual and Overseas are single categories
   // selected directly at entry, so they skip it entirely.
   const churchCategories = REGISTRATION_CATEGORIES.filter((c) => c.type === "church");
 
@@ -69,7 +69,7 @@ export function EventRegistrationClient({ event }: Props) {
 
     if (path === "individual" || path === "overseas") {
       const category = REGISTRATION_CATEGORIES.find(
-        (c) => c.id === (path === "individual" ? "individual" : "overseas-delegates")
+        (c) => c.id === (path === "individual" ? "individual" : "overseas")
       );
       setSelectedCategory(category ?? null);
       setStep("form");
@@ -200,7 +200,7 @@ export function EventRegistrationClient({ event }: Props) {
             >
               <Globe className="h-5 w-5 text-muted-foreground mb-2" />
               <p className="font-medium text-foreground">Overseas</p>
-              <p className="text-sm text-muted-foreground mt-1">International guests and delegates.</p>
+              <p className="text-sm text-muted-foreground mt-1">International guests attending from outside Fiji.</p>
             </button>
           </div>
 

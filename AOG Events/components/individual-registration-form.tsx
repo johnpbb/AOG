@@ -38,7 +38,7 @@ export function IndividualRegistrationForm({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isOverseasDelegate = category.id === "overseas-delegates";
+  const isOverseas = category.id === "overseas";
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -85,7 +85,7 @@ export function IndividualRegistrationForm({
 
   const isStep1Valid =
     formData.firstName && formData.lastName && formData.email && formData.phone && numberOfTickets > 0 &&
-    (!isOverseasDelegate || formData.country) && attendeeNamesValid;
+    (!isOverseas || formData.country) && attendeeNamesValid;
 
   const handleSubmit = async () => {
     setIsProcessing(true);
@@ -180,9 +180,7 @@ export function IndividualRegistrationForm({
         <div className="space-y-6">
           <div className="text-center">
             <h2 className="text-2xl font-semibold text-foreground">Your Details</h2>
-            <p className="text-muted-foreground mt-1">
-              Enter your information for {category.id === "overseas-delegates" ? "Overseas Attendee" : category.name}
-            </p>
+            <p className="text-muted-foreground mt-1">Enter your information for {category.name}</p>
           </div>
 
           <FieldGroup className="grid gap-6 md:grid-cols-2">
@@ -210,13 +208,13 @@ export function IndividualRegistrationForm({
                 onChange={(e) => updateFormData("phone", e.target.value)} />
             </Field>
 
-            <Field className={isOverseasDelegate ? "" : "md:col-span-2"}>
+            <Field className={isOverseas ? "" : "md:col-span-2"}>
               <FieldLabel htmlFor="church">Church Affiliation (Optional)</FieldLabel>
               <Input id="church" placeholder="Enter your church name if applicable" value={formData.church}
                 onChange={(e) => updateFormData("church", e.target.value)} />
             </Field>
 
-            {isOverseasDelegate && (
+            {isOverseas && (
               <Field>
                 <FieldLabel htmlFor="country">Country</FieldLabel>
                 <Select value={formData.country} onValueChange={(v) => updateFormData("country", v)}>

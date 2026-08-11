@@ -125,7 +125,7 @@ async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
 
   // Additional registration info, below the registration ID / ticket number /
   // attendee / category column. Church/district/country are omitted for
-  // Individual and Overseas Delegate tickets (no Church relation).
+  // Individual and Overseas tickets (no Church relation).
   label("TYPE", 75, height - 355);
   value(p.registrationType, 75, height - 373, 11);
 

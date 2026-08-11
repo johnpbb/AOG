@@ -4,7 +4,7 @@ export type RegistrationCategory =
   | "medium-church"
   | "small-church"
   | "individual"
-  | "overseas-delegates";
+  | "overseas";
 
 interface AgeCaps {
   adults: number;
@@ -24,12 +24,12 @@ export interface CategoryInfo {
   // an aggregate pool (any number of churches may register within a tier).
   perRegCap: AgeCaps | null;
   // Aggregate cap shared across ALL registrations in the category — set for
-  // Individual/Overseas Delegates instead of a per-registration cap.
+  // Individual/Overseas instead of a per-registration cap.
   pool: AgeCaps | null;
   /**
    * Code used in the reference number formula: AG100-{churchId}{categoryCode}{total}.
-   * Spec only defined SM/MD/VL/OS/IN/MI — LG and OD are our provisional extensions
-   * for categories the client's spec didn't anticipate. Pending client sign-off.
+   * Spec only defined SM/MD/VL/OS/IN/MI — LG is our provisional extension for a
+   * category the client's spec didn't anticipate. Pending client sign-off.
    */
   categoryCode: string;
 }
@@ -91,15 +91,15 @@ export const REGISTRATION_CATEGORIES: CategoryInfo[] = [
     categoryCode: "IN",
   },
   {
-    id: "overseas-delegates",
-    name: "Overseas Delegates",
-    description: "International guests and delegates",
+    id: "overseas",
+    name: "Overseas",
+    description: "International guests attending from outside Fiji",
     type: "individual",
     icon: "globe",
     fee: 100, // Matches Individual Attendee rate for now, per client request — Master doc has no fee column.
     perRegCap: null,
     pool: { adults: 1000, youth: 500, kids: 100 },
-    categoryCode: "OD",
+    categoryCode: "OS",
   },
 ];
 
@@ -127,7 +127,7 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
   { term: "Medium Church", definition: "AG Fiji church with 51–100 members." },
   { term: "Large Church", definition: "AG Fiji church with 101–300 members." },
   { term: "Very Large Church", definition: "AG Fiji church with 300+ members." },
-  { term: "Overseas Delegates", definition: "International guests and delegates attending from outside Fiji." },
+  { term: "Overseas", definition: "International guests attending from outside Fiji." },
   { term: "Individual", definition: "Personal registration for international guests or anyone who doesn't fit a local AG Fiji church category." },
   { term: "Adults", definition: "Attendees aged 26 and over." },
   { term: "NextGen / Youth", definition: `Attendees aged ${YOUTH_AGE_RANGE}.` },
