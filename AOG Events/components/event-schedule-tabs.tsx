@@ -105,7 +105,7 @@ const SCHEDULE: ScheduleDay[] = [
     tabLabel: "Sun, 13 Dec",
     fullLabel: "Sunday, 13 December",
     sessions: [
-      { icon: Church, title: "Join a local AOG church for services", time: "10am", venue: "Any local AOG church" },
+      { icon: Church, title: "Join a local AOG church for services", time: "AM", venue: "Any local AOG church" },
       { icon: Megaphone, title: "Closing Rally", time: "3pm", venue: "Churchill Park, Lautoka" },
     ],
   },
