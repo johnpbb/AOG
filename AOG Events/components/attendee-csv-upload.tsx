@@ -6,6 +6,7 @@ import { Upload, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toCSV } from "@/lib/csv";
 import { isExcelFilename, parseExcelBuffer } from "@/lib/parse-tabular";
+import { YOUTH_AGE_RANGE } from "@/lib/types";
 import {
   ATTENDEE_CSV_HEADERS,
   ATTENDEE_CSV_TEMPLATE_EXAMPLE_ROWS,
@@ -100,7 +101,8 @@ export function AttendeeCsvUpload({ onChange }: AttendeeCsvUploadProps) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          One row per attendee (Adults &amp; Youth only — kids are counted separately below).
+          One row per attendee — Adults &amp; NextGen Youth ({YOUTH_AGE_RANGE}) only. Do not include kids;
+          they&apos;re counted separately below.
         </p>
         <button
           type="button"

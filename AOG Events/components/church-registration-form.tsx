@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CategoryInfo, KIDS_YOUNGER_AGE_RANGE, KIDS_OLDER_AGE_RANGE } from "@/lib/types";
+import { CategoryInfo, KIDS_YOUNGER_AGE_RANGE, KIDS_OLDER_AGE_RANGE, YOUTH_AGE_RANGE } from "@/lib/types";
 import { ChurchOption } from "./church-autocomplete";
 import { PaymentTypeSelector } from "./payment-type-selector";
 import { Button } from "@/components/ui/button";
@@ -238,10 +238,11 @@ export function ChurchRegistrationForm({
           {/* Attendance Demographics */}
           <div className="text-xs text-muted-foreground mt-0.5 p-5 rounded-xl border-2 border-border bg-secondary/30 space-y-4">
             <div>
-              <FieldLabel>Attendee List (Adults &amp; Youth)</FieldLabel>
+              <FieldLabel>Attendee List (Adults &amp; NextGen Youth)</FieldLabel>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Upload a CSV naming every adult and youth attending — each gets their own ticket with their name
-                printed on it. (max {perRegCap.adults.toLocaleString()} adults, {perRegCap.youth.toLocaleString()} youth)
+                Upload a CSV or Excel file naming every adult and NextGen Youth ({YOUTH_AGE_RANGE}) attending — each
+                gets their own ticket with their name printed on it. Do not include kids — list them in the Kids
+                headcount below instead. (max {perRegCap.adults.toLocaleString()} adults, {perRegCap.youth.toLocaleString()} youth)
               </p>
             </div>
             <AttendeeCsvUpload onChange={setAttendees} />
