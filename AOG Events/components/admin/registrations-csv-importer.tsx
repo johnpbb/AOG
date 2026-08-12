@@ -110,7 +110,7 @@ export function RegistrationsCsvImporter({ onImported, onClose }: RegistrationsC
     <Card className="border-primary/30">
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Import Registrations from CSV</h2>
+          <h2 className="text-lg font-semibold text-foreground">Import Registrations from CSV/Excel</h2>
           <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
         </div>
 
@@ -153,9 +153,11 @@ export function RegistrationsCsvImporter({ onImported, onClose }: RegistrationsC
               )}
             >
               <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-foreground font-medium">{file ? file.name : "Drop a CSV file here, or click to choose"}</p>
+              <p className="text-sm text-foreground font-medium">{file ? file.name : "Drop a CSV or Excel file here, or click to choose"}</p>
               <p className="text-xs text-muted-foreground mt-1">Matches the columns in the downloadable template</p>
-              <input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden"
+              <input ref={inputRef} type="file"
+                accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
             </div>
 

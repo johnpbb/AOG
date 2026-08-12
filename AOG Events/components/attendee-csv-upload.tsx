@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import { Upload, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toCSV } from "@/lib/csv";
+import { isExcelFilename, parseExcelBuffer } from "@/lib/parse-tabular";
 import {
   ATTENDEE_CSV_HEADERS,
   ATTENDEE_CSV_TEMPLATE_EXAMPLE_ROWS,
@@ -50,30 +51,47 @@ export function AttendeeCsvUpload({ onChange }: AttendeeCsvUploadProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows]);
 
-  const handleFile = (file: File) => {
+  const applyParsedRows = (fields: string[], data: Record<string, string>[]) => {
+    const missingHeaders = ATTENDEE_CSV_HEADERS.filter((h) => !fields.includes(h));
+    if (missingHeaders.length > 0) {
+      setParseError(`Missing column(s): ${missingHeaders.join(", ")}. Please use the downloadable template.`);
+      return;
+    }
+    if (data.length === 0) {
+      setParseError("This file has no attendee rows.");
+      return;
+    }
+    if (data.length > 2000) {
+      setParseError("This file has too many rows (max 2000).");
+      return;
+    }
+    setRows(validateAttendeeCsvRows(data));
+  };
+
+  const handleFile = async (file: File) => {
     setFileName(file.name);
     setParseError(null);
     setRows(null);
 
+    if (isExcelFilename(file.name)) {
+      try {
+        const buffer = await file.arrayBuffer();
+        const { fields, data } = parseExcelBuffer(buffer);
+        if (fields.length === 0) {
+          setParseError("Could not read the Excel file — make sure it has a header row and at least one data row.");
+          return;
+        }
+        applyParsedRows(fields, data);
+      } catch {
+        setParseError("Could not read the Excel file. Please try again.");
+      }
+      return;
+    }
+
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
-        const missingHeaders = ATTENDEE_CSV_HEADERS.filter((h) => !results.meta.fields?.includes(h));
-        if (missingHeaders.length > 0) {
-          setParseError(`Missing column(s): ${missingHeaders.join(", ")}. Please use the downloadable template.`);
-          return;
-        }
-        if (results.data.length === 0) {
-          setParseError("This file has no attendee rows.");
-          return;
-        }
-        if (results.data.length > 2000) {
-          setParseError("This file has too many rows (max 2000).");
-          return;
-        }
-        setRows(validateAttendeeCsvRows(results.data));
-      },
+      complete: (results) => applyParsedRows(results.meta.fields ?? [], results.data),
       error: (err) => setParseError(err.message),
     });
   };
@@ -109,12 +127,12 @@ export function AttendeeCsvUpload({ onChange }: AttendeeCsvUploadProps) {
         )}
       >
         <Upload className="h-7 w-7 text-muted-foreground mx-auto mb-2" />
-        <p className="text-sm text-foreground font-medium">{fileName ?? "Drop your attendee list CSV here, or click to choose"}</p>
+        <p className="text-sm text-foreground font-medium">{fileName ?? "Drop your attendee list (CSV or Excel) here, or click to choose"}</p>
         <p className="text-xs text-muted-foreground mt-1">Matches the columns in the downloadable template</p>
         <input
           ref={inputRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
           className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
         />
