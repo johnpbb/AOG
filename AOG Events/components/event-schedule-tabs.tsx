@@ -42,7 +42,7 @@ const SCHEDULE: ScheduleDay[] = [
     fullLabel: "Monday, 7 December",
     sessions: [
       { icon: ClipboardCheck, title: "Registration Check-ins", time: "8am – 2pm", venue: "Mount Zion Cathedral, Saru" },
-      { icon: Sun, title: "WM & Men’s Day", time: "9am – 1pm", venue: "Mount Zion Cathedral, Saru" },
+      { icon: Sun, title: "WM & Men’s Day", time: "9am – 1pm", venue: "Mount Zion Cathedral, Saru & Namoli AOG" },
       { icon: Moon, title: "Evening Rally", time: "From 6:30pm", venue: "Churchill Park, Lautoka" },
     ],
   },

@@ -72,7 +72,7 @@ export default async function HomePage() {
             <Link href={primaryEventHref} className="inline-flex items-center gap-[10px] bg-brand-orange text-brand-white px-10 py-[15px] rounded-lg font-bold text-[15px] no-underline tracking-[0.04em]">
               View Events <ArrowRight size={17} />
             </Link>
-            <a href="https://www.agfiji.org/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-[10px] bg-transparent text-white/80 px-10 py-[15px] rounded-lg font-semibold text-[15px] no-underline border border-white/18">
+            <a href="https://agfiji.org/agfj100" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-[10px] bg-transparent text-white/80 px-10 py-[15px] rounded-lg font-semibold text-[15px] no-underline border border-white/18">
               Our Story
             </a>
           </div>
