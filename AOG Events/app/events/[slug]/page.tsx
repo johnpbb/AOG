@@ -53,8 +53,8 @@ export default async function EventPage({ params }: Props) {
       {/* ── BANNER ──────────────────────────────────────────────────────────── */}
       {event.bannerUrl ? (
         <div className="relative h-[380px] overflow-hidden">
-          <Image src={event.bannerUrl} alt={event.name} fill className="object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+          <Image src={event.bannerUrl} alt={event.name} fill className="object-contain" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 px-10 pb-9">
             <div className="max-w-[1200px] mx-auto">
               <h1 className="text-[clamp(28px,4vw,48px)] font-extrabold text-brand-white leading-[1.35] font-boldonse">

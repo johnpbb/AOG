@@ -63,8 +63,8 @@ export default async function EventRegisterPage({ params }: Props) {
       {/* ── BANNER ──────────────────────────────────────────────────────────── */}
       {event.bannerUrl && (
         <div className="relative h-[220px] sm:h-[300px] overflow-hidden">
-          <Image src={event.bannerUrl} alt={event.name} fill className="object-cover" priority />
-          <div className="absolute inset-0 bg-gradient-to-t from-brand-black via-black/10 to-transparent" />
+          <Image src={event.bannerUrl} alt={event.name} fill className="object-contain" priority />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
         </div>
       )}
 

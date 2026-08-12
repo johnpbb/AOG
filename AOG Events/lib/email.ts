@@ -190,6 +190,7 @@ async function generateTicketsPdf(
 interface PendingEmailParams {
   to: string;
   registrantName: string;
+  churchName?: string;
   registrationId: string;
   category: string;
   numberOfTickets: number;
@@ -209,6 +210,7 @@ export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
 
   const vars: Record<string, string> = {
     registrantName: p.registrantName,
+    churchName: p.churchName ?? "",
     registrationId: p.registrationId,
     category: p.category,
     numberOfTickets: String(p.numberOfTickets),
@@ -226,6 +228,7 @@ export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
   const dataBlocks: string[] = [
     `<table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;">
       ${pill("Registration ID", p.registrationId)}
+      ${p.churchName ? pill("Church", p.churchName) : ""}
       ${pill("Category", p.category)}
       ${pill("Tickets", String(p.numberOfTickets))}
       ${pill("Total (FJD)", `$${p.fee.toFixed(2)}`)}
@@ -262,6 +265,7 @@ export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
 interface AdminNotificationParams {
   to: string;
   registrantName: string;
+  churchName?: string;
   registrantEmail: string;
   registrationId: string;
   category: string;
@@ -276,6 +280,7 @@ export async function sendAdminNotificationEmail(p: AdminNotificationParams) {
 
   const vars: Record<string, string> = {
     registrantName: p.registrantName,
+    churchName: p.churchName ?? "",
     registrantEmail: p.registrantEmail,
     registrationId: p.registrationId,
     category: p.category,
@@ -289,6 +294,7 @@ export async function sendAdminNotificationEmail(p: AdminNotificationParams) {
     `<table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;">
       ${pill("Registration ID", p.registrationId)}
       ${pill("Registrant", p.registrantName)}
+      ${p.churchName ? pill("Church", p.churchName) : ""}
       ${pill("Email", p.registrantEmail)}
       ${pill("Category", p.category)}
       ${pill("Tickets", String(p.numberOfTickets))}

@@ -88,6 +88,7 @@ export async function POST(request: Request) {
 
       const emailParams = {
         registrantName: String(registrantName),
+        churchName: rest.churchName ? String(rest.churchName) : undefined,
         registrationId: result.registration.registrationId,
         category: result.catInfo?.name ?? category,
         numberOfTickets: result.qty,

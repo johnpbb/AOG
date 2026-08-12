@@ -70,7 +70,8 @@ export function IndividualRegistrationForm({
   const updateAttendeeName = (index: number, field: "firstName" | "lastName" | "email" | "phone", value: string) =>
     setAttendeeNames((prev) => prev.map((a, i) => (i === index ? { ...a, [field]: value } : a)));
   const attendeeNamesValid =
-    attendeeNames.length > 0 && attendeeNames.every((a) => a.firstName.trim() && a.lastName.trim() && a.email.trim());
+    attendeeNames.length > 0 &&
+    attendeeNames.every((a) => a.firstName.trim() && a.lastName.trim() && (!a.email.trim() || a.email.includes("@")));
   const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
   const [installmentCount, setInstallmentCount] = useState(5);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -277,6 +278,7 @@ export function IndividualRegistrationForm({
                 <FieldLabel>Name Each Ticket</FieldLabel>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Every adult and youth ticket is printed with the attendee&apos;s own name and email.
+                  Make sure the email is correct, or leave it blank if it&apos;s not available.
                   {kids > 0 && " Kids are counted above but don't need to be named."}
                 </p>
               </div>
@@ -310,7 +312,7 @@ export function IndividualRegistrationForm({
                         onChange={(e) => updateAttendeeName(i, "firstName", e.target.value)} />
                       <Input placeholder="Last name" value={a.lastName}
                         onChange={(e) => updateAttendeeName(i, "lastName", e.target.value)} />
-                      <Input className="md:col-span-2" type="email" placeholder="Email address" value={a.email}
+                      <Input className="md:col-span-2" type="email" placeholder="Email address (optional)" value={a.email}
                         onChange={(e) => updateAttendeeName(i, "email", e.target.value)} />
                     </div>
                   </div>

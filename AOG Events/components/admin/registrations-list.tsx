@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { RegistrationsCsvImporter } from "./registrations-csv-importer";
+import { RegistrationDetailsDialog } from "./registration-details-dialog";
 
 export function RegistrationsList() {
   const [registrations, setRegistrations] = useState<any[]>([]);
@@ -39,6 +40,7 @@ export function RegistrationsList() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [showImporter, setShowImporter] = useState(false);
+  const [detailsReg, setDetailsReg] = useState<any | null>(null);
 
   useEffect(() => {
     fetchRegistrations();
@@ -306,7 +308,7 @@ export function RegistrationsList() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDetailsReg(reg)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
@@ -340,6 +342,12 @@ export function RegistrationsList() {
           </div>
         </CardContent>
       </Card>
+
+      <RegistrationDetailsDialog
+        registration={detailsReg}
+        open={!!detailsReg}
+        onOpenChange={(open) => { if (!open) setDetailsReg(null); }}
+      />
     </div>
   );
 }

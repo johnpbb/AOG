@@ -43,6 +43,7 @@ export const TEMPLATE_META: Record<TemplateName, TemplateMeta> = {
     description: "Sent to registrant when a bank transfer registration is submitted.",
     variables: [
       { name: "registrantName", description: "Registrant's name", sample: "John" },
+      { name: "churchName", description: "Church name (blank for Individual/Overseas)", sample: "Suva Central AG" },
       { name: "registrationId", description: "Registration ID", sample: "AOG100-0001" },
       { name: "category", description: "Category label", sample: "Large Church" },
       { name: "numberOfTickets", description: "Number of tickets", sample: "4" },
@@ -62,6 +63,7 @@ export const TEMPLATE_META: Record<TemplateName, TemplateMeta> = {
     description: "Sent to admin when a new bank transfer needs verification.",
     variables: [
       { name: "registrantName", description: "Registrant full name", sample: "John Smith" },
+      { name: "churchName", description: "Church name (blank for Individual/Overseas)", sample: "Suva Central AG" },
       { name: "registrantEmail", description: "Registrant email", sample: "john@example.com" },
       { name: "registrationId", description: "Registration ID", sample: "AOG100-0001" },
       { name: "category", description: "Category label", sample: "Large Church" },
