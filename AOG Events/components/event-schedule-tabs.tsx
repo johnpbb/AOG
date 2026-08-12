@@ -27,6 +27,7 @@ interface ScheduleSession {
 
 interface ScheduleDay {
   id: string;
+  dayLabel: string;
   tabLabel: string;
   fullLabel: string;
   dayNote?: string;
@@ -36,6 +37,7 @@ interface ScheduleDay {
 const SCHEDULE: ScheduleDay[] = [
   {
     id: "mon7",
+    dayLabel: "Day 1",
     tabLabel: "Mon, 7 Dec",
     fullLabel: "Monday, 7 December",
     sessions: [
@@ -46,6 +48,7 @@ const SCHEDULE: ScheduleDay[] = [
   },
   {
     id: "tue8-fri11",
+    dayLabel: "Day 2-5",
     tabLabel: "Tue 8 – Fri 11 Dec",
     fullLabel: "Tuesday, 8 December – Friday, 11 December",
     sessions: [
@@ -82,6 +85,7 @@ const SCHEDULE: ScheduleDay[] = [
   },
   {
     id: "sat12",
+    dayLabel: "Day 6",
     tabLabel: "Sat, 12 Dec",
     fullLabel: "Saturday, 12 December",
     sessions: [
@@ -96,6 +100,7 @@ const SCHEDULE: ScheduleDay[] = [
   },
   {
     id: "sun13",
+    dayLabel: "Day 7",
     tabLabel: "Sun, 13 Dec",
     fullLabel: "Sunday, 13 December",
     sessions: [
@@ -132,7 +137,7 @@ export function EventScheduleTabs() {
                   active === i ? "text-brand-orange" : "text-white/35"
                 }`}
               >
-                Day {i + 1}
+                {d.dayLabel}
               </div>
               <div className={`text-sm font-bold ${active === i ? "text-brand-white" : "text-white/60"}`}>
                 {d.tabLabel}
