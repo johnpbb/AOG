@@ -96,6 +96,7 @@ const SCHEDULE: ScheduleDay[] = [
         time: "4pm",
         venue: "Sheraton Fiji Golf & Beach Resort, Denarau",
       },
+      { icon: Moon, title: "NextGen Rally", time: "6:30pm", venue: "Churchill Park, Lautoka" },
     ],
   },
   {
