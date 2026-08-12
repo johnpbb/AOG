@@ -1,12 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, Sun, Moon, Users, PartyPopper, ClipboardCheck, Palette, type LucideIcon } from "lucide-react";
+import {
+  MapPin,
+  Sun,
+  Moon,
+  Users,
+  PartyPopper,
+  ClipboardCheck,
+  Palette,
+  Coffee,
+  HandHeart,
+  BookOpen,
+  Church,
+  Megaphone,
+  type LucideIcon,
+} from "lucide-react";
 
 interface ScheduleSession {
   icon: LucideIcon;
   title: string;
-  time: string;
+  time?: string;
   venue: string;
   note?: string;
 }
@@ -35,6 +49,12 @@ const SCHEDULE: ScheduleDay[] = [
     tabLabel: "Tue 8 – Fri 11 Dec",
     fullLabel: "Tuesday, 8 December – Friday, 11 December",
     sessions: [
+      {
+        icon: Coffee,
+        title: "Missions Breakfast",
+        time: "6am",
+        venue: "Sheraton Fiji Golf & Beach Resort, Denarau",
+      },
       { icon: Sun, title: "Adults Program", time: "9am – 2pm", venue: "Mount Zion Cathedral, Saru" },
       { icon: Users, title: "NextGen & NextGen Kids Program", time: "9am – 3pm", venue: "Churchill Park, Lautoka" },
       {
@@ -43,6 +63,19 @@ const SCHEDULE: ScheduleDay[] = [
         time: "9am – 3pm",
         venue: "Churchill Park, Lautoka",
         note: "Thursday & Friday only",
+      },
+      {
+        icon: HandHeart,
+        title: "SPBC Prayer Breakfast",
+        time: "6am",
+        venue: "Tanoa Waterfront Hotel, Lautoka",
+        note: "Thursday only",
+      },
+      {
+        icon: BookOpen,
+        title: "Fire Bible Launch",
+        venue: "Churchill Park, Lautoka",
+        note: "Friday only",
       },
       { icon: Moon, title: "Evening Rally", time: "From 6:30pm", venue: "Churchill Park, Lautoka" },
     ],
@@ -65,7 +98,10 @@ const SCHEDULE: ScheduleDay[] = [
     id: "sun13",
     tabLabel: "Sun, 13 Dec",
     fullLabel: "Sunday, 13 December",
-    sessions: [{ icon: Moon, title: "Evening Rally", time: "3pm", venue: "Churchill Park, Lautoka" }],
+    sessions: [
+      { icon: Church, title: "Join a local AOG church for services", time: "10am", venue: "Any local AOG church" },
+      { icon: Megaphone, title: "Closing Rally", time: "3pm", venue: "Churchill Park, Lautoka" },
+    ],
   },
 ];
 
@@ -120,7 +156,7 @@ export function EventScheduleTabs() {
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <p className="text-sm font-semibold text-brand-white">{s.title}</p>
-                    <span className="text-xs text-brand-orange font-medium">{s.time}</span>
+                    {s.time && <span className="text-xs text-brand-orange font-medium">{s.time}</span>}
                   </div>
                   <p className="text-[13px] text-white/45 mt-1 flex items-center gap-1">
                     <MapPin size={11} className="shrink-0" />
