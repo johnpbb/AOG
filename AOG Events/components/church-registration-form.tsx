@@ -291,7 +291,7 @@ export function ChurchRegistrationForm({
           <div className="p-4 rounded-lg border border-brand-orange/30 bg-brand-orange/5 text-sm space-y-1">
             <p className="font-semibold text-foreground">Payment via Bank Transfer</p>
             <p className="text-muted-foreground">
-              After submitting, you'll receive bank transfer details. Your tickets will be issued once our team verifies your remittance — usually within 1–2 business days.
+              After submitting, you'll receive bank transfer details. Your tickets will be issued once our team verifies your remittance — usually within 2–3 business days. Please forward bank remittance advice to aogfj_finance@connect.com.fj.
             </p>
           </div>
 
