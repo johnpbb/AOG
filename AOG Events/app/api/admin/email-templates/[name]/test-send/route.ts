@@ -18,6 +18,8 @@ const transporter = nodemailer.createTransport({
 const SAMPLE_VARS: Record<TemplateName, Record<string, string>> = {
   pending_registration: {
     registrantName: "John",
+    recipientName: "Suva Central AG",
+    churchName: "Suva Central AG",
     registrationId: "AOG100-TEST",
     category: "Large Church",
     numberOfTickets: "4",
@@ -40,6 +42,8 @@ const SAMPLE_VARS: Record<TemplateName, Record<string, string>> = {
   },
   ticket_confirmation: {
     registrantName: "John",
+    recipientName: "Suva Central AG",
+    churchName: "Suva Central AG",
     registrationId: "AOG100-TEST",
     category: "Large Church",
     eventName: "AOG Fiji 100th Anniversary",

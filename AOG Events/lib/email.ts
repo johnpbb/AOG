@@ -210,6 +210,7 @@ export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
 
   const vars: Record<string, string> = {
     registrantName: p.registrantName,
+    recipientName: p.churchName || p.registrantName,
     churchName: p.churchName ?? "",
     registrationId: p.registrationId,
     category: p.category,
@@ -376,6 +377,8 @@ export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
 
   const vars: Record<string, string> = {
     registrantName: p.registrantName,
+    recipientName: p.churchName || p.registrantName,
+    churchName: p.churchName ?? "",
     registrationId: p.registrationId,
     category: p.category,
     eventName: p.eventName,

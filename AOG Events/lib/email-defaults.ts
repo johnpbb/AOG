@@ -43,6 +43,7 @@ export const TEMPLATE_META: Record<TemplateName, TemplateMeta> = {
     description: "Sent to registrant when a bank transfer registration is submitted.",
     variables: [
       { name: "registrantName", description: "Registrant's name", sample: "John" },
+      { name: "recipientName", description: "Church name for church registrations, otherwise the registrant's name — use this for the greeting", sample: "Suva Central AG" },
       { name: "churchName", description: "Church name (blank for Individual/Overseas)", sample: "Suva Central AG" },
       { name: "registrationId", description: "Registration ID", sample: "AOG100-0001" },
       { name: "category", description: "Category label", sample: "Large Church" },
@@ -78,6 +79,8 @@ export const TEMPLATE_META: Record<TemplateName, TemplateMeta> = {
     description: "Sent to registrant when admin approves their bank transfer.",
     variables: [
       { name: "registrantName", description: "Registrant's name", sample: "John" },
+      { name: "recipientName", description: "Church name for church registrations, otherwise the registrant's name — use this for the greeting", sample: "Suva Central AG" },
+      { name: "churchName", description: "Church name (blank for Individual/Overseas)", sample: "Suva Central AG" },
       { name: "registrationId", description: "Registration ID", sample: "AOG100-0001" },
       { name: "category", description: "Category label", sample: "Large Church" },
       { name: "eventName", description: "Event name", sample: "AOG Fiji 100th Anniversary" },
@@ -126,7 +129,7 @@ export const DEFAULT_TEMPLATES: Record<TemplateName, EmailTemplateContent> = {
   pending_registration: {
     subject: "Registration Received – {{registrationId}}",
     preHeading: "Registration Received",
-    heading: "Hi {{registrantName}},",
+    heading: "Hi {{recipientName}},",
     bodyHtml: `<p>Your registration for <strong>{{eventName}}</strong> has been received and is currently <strong>pending payment verification</strong>.</p>
 <p><strong>1. How can I pay for my registration?</strong><br/>
 Direct Bank Deposit / Internet Banking Transfer using the bank details below, or cash at your nearest AGFJ Divisional Office or Headquarters.</p>
@@ -151,7 +154,7 @@ Once the HQ Finance team manually matches your reference, you'll receive a confi
     subject: "Your Tickets – {{eventName}} ({{registrationId}})",
     preHeading: "Registration Confirmed",
     heading: "Your Tickets are Ready! 🎉",
-    bodyHtml: `<p>Hi <strong>{{registrantName}}</strong>, your payment has been verified and your registration for <strong>{{eventName}}</strong> is confirmed.</p>`,
+    bodyHtml: `<p>Hi <strong>{{recipientName}}</strong>, your payment has been verified and your registration for <strong>{{eventName}}</strong> is confirmed.</p>`,
     ctaText: "",
     ctaUrl: "",
     closingHtml: `<p>If you have any questions, reply to this email or contact us at <strong>{{supportEmail}}</strong>.</p>`,
