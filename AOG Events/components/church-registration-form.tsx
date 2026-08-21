@@ -118,6 +118,7 @@ export function ChurchRegistrationForm({
         category: category.id,
         registrationId: dbData.registrationId,
         ...formData,
+        email: contactEmail,
         churchName: church?.name,
         numberOfTickets: total,
         fee: category.fee,
@@ -163,8 +164,7 @@ export function ChurchRegistrationForm({
 
           <FieldGroup className="grid gap-6 md:grid-cols-2 text-xs text-muted-foreground mt-0.5">
             <Field>
-              <FieldLabel htmlFor="registrarName">Registrar Name</FieldLabel>
-              <p className="text-xs text-muted-foreground mb-1">The person filling out this form.</p>
+              <FieldLabel htmlFor="registrarName">Name of Person Filling Out This Form</FieldLabel>
               <Input id="registrarName" placeholder="Full name" value={formData.registrarName}
                 onChange={(e) => updateFormData("registrarName", e.target.value)} />
             </Field>
@@ -243,6 +243,9 @@ export function ChurchRegistrationForm({
                 Upload a CSV or Excel file naming every adult and NextGen Youth ({YOUTH_AGE_RANGE}) attending — each
                 gets their own ticket with their name printed on it. Do not include kids — list them in the Kids
                 headcount below instead. (max {perRegCap.adults.toLocaleString()} adults, {perRegCap.youth.toLocaleString()} youth)
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Tip: use a laptop or desktop for this step — CSV files often won&apos;t open on mobile browsers.
               </p>
             </div>
             <AttendeeCsvUpload onChange={setAttendees} />

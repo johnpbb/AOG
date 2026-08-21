@@ -131,6 +131,9 @@ export function AttendeeCsvUpload({ onChange }: AttendeeCsvUploadProps) {
         <Upload className="h-7 w-7 text-muted-foreground mx-auto mb-2" />
         <p className="text-sm text-foreground font-medium">{fileName ?? "Drop your attendee list (CSV or Excel) here, or click to choose"}</p>
         <p className="text-xs text-muted-foreground mt-1">Matches the columns in the downloadable template</p>
+        {fileName && (
+          <p className="text-xs text-muted-foreground mt-1">Uploading another file will replace this one — no need to remove it first.</p>
+        )}
         <input
           ref={inputRef}
           type="file"
@@ -206,7 +209,7 @@ export function AttendeeCsvUpload({ onChange }: AttendeeCsvUploadProps) {
           </div>
           {invalidCount > 0 && (
             <p className="text-destructive text-xs">
-              Fix the row(s) with errors and re-upload before submitting.
+              Fix the row(s) with errors and re-upload before submitting — the new file will replace this one.
             </p>
           )}
         </>

@@ -148,6 +148,19 @@ function PendingScreen({
         </p>
       </div>
 
+      {/* FAQ #4 — forward remittance advice */}
+      <div className="max-w-sm mx-auto rounded-xl border border-border bg-card p-5 text-left space-y-2">
+        <p className="text-sm font-semibold text-foreground">4. Forward your remittance advice</p>
+        <p className="text-sm text-muted-foreground">
+          Please forward your bank remittance advice, along with your Unique Registration ID{" "}
+          <span className="font-mono font-semibold text-foreground">{registrationId}</span>, to{" "}
+          <a href="mailto:aogfj_finance@connect.com.fj" className="font-medium text-foreground underline">
+            aogfj_finance@connect.com.fj
+          </a>{" "}
+          to help HQ Finance match your payment faster.
+        </p>
+      </div>
+
       {paymentType === "partial" && (
         <div className="max-w-sm mx-auto rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20 p-5 text-left space-y-2">
           <p className="text-sm font-semibold text-foreground">Partial Payment Plan</p>
