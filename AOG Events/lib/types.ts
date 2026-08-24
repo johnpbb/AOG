@@ -128,7 +128,7 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
   { term: "Large Church", definition: "AG Fiji church with 101–300 members." },
   { term: "Very Large Church", definition: "AG Fiji church with 300+ members." },
   { term: "Overseas", definition: "International guests attending from outside Fiji." },
-  { term: "Individual", definition: "Personal registration for international guests or anyone who doesn't fit a local AG Fiji church category." },
+  { term: "Individual", definition: "Personal registration for anyone who doesn't fit a local AG Fiji church category." },
   { term: "Adults", definition: "Attendees aged 26 and over." },
   { term: "NextGen / Youth", definition: `Attendees aged ${YOUTH_AGE_RANGE}.` },
   { term: "Kids", definition: `Attendees aged ${KIDS_AGE_RANGE}. Kids do not receive an entry QR code.` },

@@ -134,7 +134,7 @@ export const DEFAULT_TEMPLATES: Record<TemplateName, EmailTemplateContent> = {
 <p><strong>1. How can I pay for my registration?</strong><br/>
 Direct Bank Deposit / Internet Banking Transfer using the bank details below, or cash at your nearest AGFJ Divisional Office or Headquarters.</p>
 <p><strong>2. How will HQ identify my payment?</strong><br/>
-You must include your Unique Registration ID <strong>{{registrationId}}</strong> in the payment narration / reference field of your bank transfer or M-PAiSA transaction.</p>
+You must include your Unique Registration ID <strong>{{registrationId}}</strong> in the payment narration / reference field of your bank transfer.</p>
 <p><strong>3. I've paid — now what?</strong><br/>
 Once the HQ Finance team manually matches your reference, you'll receive a confirmation receipt and your digital entry QR tokens by email.</p>`,
     ctaText: "",

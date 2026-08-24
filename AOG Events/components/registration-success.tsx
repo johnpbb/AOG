@@ -135,7 +135,7 @@ function PendingScreen({
         <p className="text-sm font-semibold text-foreground">2. How will HQ identify my payment?</p>
         <p className="text-sm text-muted-foreground">
           You <span className="font-semibold">must</span> include your Unique Registration ID{" "}
-          <span className="font-mono font-semibold text-foreground">{registrationId}</span> in the payment narration / reference field of your bank transfer or M-PAiSA transaction.
+          <span className="font-mono font-semibold text-foreground">{registrationId}</span> in the payment narration / reference field of your bank transfer.
         </p>
       </div>
 
