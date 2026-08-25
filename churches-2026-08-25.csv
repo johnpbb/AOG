@@ -1,0 +1,42 @@
+Church ID,Church Name,Denomination,City,Pastor Name,Email,Phone,Category,Adults,Youth,Kids,Attendees,Venue,Registration ID,Payment Status
+101,INNER CITY AOG,,,Moses O’Connor ,ailiginatarrah@gmail.com,,medium-church,8,14,22,44,,AG100-101MD44,PENDING
+101,INNER CITY AOG,,,Moses O’Connor ,mosesoconnor@me.com,,medium-church,1,1,20,22,,AG100-101MD22,PENDING
+142,CALVARY TEMPLE AOG,,,Mosese Cakau,kuinikoro.m@gmail.com,,very-large-church,2,2,201,205,,AG100-142VL205,PENDING
+142,CALVARY TEMPLE AOG,,,Mosese Cakau,kuinikoro.m@gmail.com,,very-large-church,1,1,8,10,,AG100-142VL10,COMPLETED
+090,BETHANY AOG,,,Ram Sadhu,Sadhu@email.com,,medium-church,1,1,30,32,,AG100-090MD32,PENDING
+095,GREAT COMMISSION APG,,,Ratu,email@email.com,,medium-church,31,35,30,96,,AG100-095MD96,PENDING
+903,World Fijian Congress — Great Britain (TBC),,,Panapasa Matanisiga,tuiso28@gmail.com,,medium-church,15,15,30,60,,AG100-903MD60,PENDING
+358,ABUNDANT LIFE A/G,,,Zxcvbnm Poiuytrewqlkjhg Fdsazxcv ,tuiso28@gmail.com,,large-church,110,100,55,265,,AG100-358LG265,PENDING
+146,DREKENIWAI AOG,,,Winston Churchill,tuiso28@gmail.com,,small-church,15,15,20,50,,AG100-146SM50,PENDING
+143,CENTRAL CHRISTIAN CENTRE,,,Very Large Church Qwerty Uiop Asdfghjklzxcvbnm,liteayoung@gmail.com,,very-large-church,500,550,600,1650,,AG100-143VL1650,PENDING
+101,INNER CITY AOG,,,Moses O’connor,ailiginatarrah@icloud.com,,medium-church,8,14,21,43,,AG100-101MD43,PENDING
+142,CALVARY TEMPLE AOG,,,Qwerty Uiop Asdfghjklzxcvbnm,liteayoung@gmail.com,,very-large-church,310,15,200,525,,AG100-142VL525,PENDING
+101,INNER CITY AOG,,,Moses O’Connor ,ailiginatarrah@icloud.com,,medium-church,8,14,29,51,,AG100-101MD51,PENDING
+101,INNER CITY AOG,,,Rev Moses O’Connor ,ailiginatarrah@icloud.com,,medium-church,2,2,5,9,,AG100-101MD9,PENDING
+101,INNER CITY AOG,,,Moses O’Connor ,ailiginatarrah@icloud.com,,medium-church,2,2,8,12,,AG100-101MD12-2,PENDING
+101,INNER CITY AOG,,,Rev Moses O’Conner ,ailiginatarrah@gmail.com,,medium-church,2,2,16,20,,AG100-101MD20,PENDING
+101,INNER CITY AOG,,,Moses O'Connor,kuinikoro.m@gmail.com,,medium-church,3,3,6,12,,AG100-101MD12,COMPLETED
+133,HARVEST CHRISTIAN CENTRE,,,Tabutabu,aogfiji25@gmail.com,,large-church,10,13,44,67,,AG100-133LG67,COMPLETED
+186,BATINIVUREWAI,,,Tabutabu,aogfiji25@gmail.com,,medium-church,31,34,27,92,,AG100-186MD92,PENDING
+328,ABBA LIFE FELLOWSHIP,,,Test,jlew921@gmail.com,,medium-church,1,1,2,4,,AG100-328MD4,COMPLETED
+073,GRACE SAMARIAN AOG,,,Tabutabu,rtabutabu@gmail.com,,medium-church,18,33,28,79,,AG100-073MD79,COMPLETED
+143,CENTRAL CHRISTIAN CENTRE,,,Tabutabu,rtabutabu@gmail.com,,very-large-church,52,93,107,252,,AG100-143VL200,COMPLETED
+101,INNER CITY AOG,,,Moses O’Connor ,ailiginatarrah@gmail.com,,medium-church,1,1,11,13,,AG100-101MD13,COMPLETED
+058,AMAZING GRACE AOG,,,C,seracaw@gmail.com,,medium-church,30,10,15,55,,AG100-058MD55,PENDING
+101,INNER CITY AOG,,,Moses O,ailiginatarrah@gmail.com,,medium-church,31,18,13,62,,AG100-101MD62,PENDING
+101,INNER CITY AOG,,,Moses O,ailiginatarrah@gmail.com,,medium-church,31,35,30,96,,AG100-101MD96,PENDING
+101,INNER CITY AOG,,,Rev Moses O’Connor ,ailiginatarrah@icloud.com,,medium-church,60,35,15,110,,AG100-101MD110,PENDING
+353,AASHISH INTERNATIONAL A/G,,,Pastor Kerto,jlew921@gmail.com,,large-church,5,5,5,15,,AG100-353LG15,COMPLETED
+,test,,"Saru, Lautoka",test,jlew921@gmail.com,123123123123,large-church,0,0,0,2, Mount Zion Cathedral: Adults ,AOG100-MPKDSEZU,COMPLETED
+,Naboro AOG,,Lautoka City,Test,kuinikoro.m@gmail.com,9256149,medium-church,0,0,0,15,Churchill Park: NexGen/Youths,AOG100-MP67GB3G,COMPLETED
+,IFGTC Nadi,,"Saru, Lautoka",Pastor Kerto,jlew921@gmail.com,123123123123,very-large-church,0,0,0,10, Mount Zion Cathedral: Adults ,AOG100-MP4YBTQV,COMPLETED
+,IFGTC Nadi,,"Saru, Lautoka",Pastor Kerto,jlew921@gmail.com,123123123123,very-large-church,0,0,0,10, Mount Zion Cathedral: Adults ,AOG100-MP4WSKIU,COMPLETED
+,IFGTC Nadi,,"Saru, Lautoka",Pastor Kerto,jlew921@gmail.com,123123123123,large-church,0,0,0,10, Mount Zion Cathedral: Adults ,AOG100-MP4WKXX4,COMPLETED
+,IFGTC,,"Saru, Lautoka",Rev. Tausia Kerto,timtaukei@gmail.com,+679123456,very-large-church,0,0,0,1, Mount Zion Cathedral: Adults ,AOG100-MP4KQC8V,COMPLETED
+,IFGTC Nadi,,"Saru, Lautoka",Pastor Kerto,jlew921@gmail.com,123123123123,very-large-church,0,0,0,1, Mount Zion Cathedral: Adults ,AOG100-MOS8FDYZ,COMPLETED
+,Test,,Lautoka,Test,jlew921@gmail.com,123123123123,very-large-church,0,0,0,1,CMF,AOG100-MOS87T7F,COMPLETED
+,Test,,Lautoka City,Test,jlew921@gmail.com,123123123123,medium-church,0,0,0,3,Churchill Park: NexGen/Youths,AOG100-MOS7W9UW,COMPLETED
+,Test,,Lautoka,Test,jlew921@gmail.com,123123123123,small-church,0,0,0,3,CMF,AOG100-MOS5GAVG,COMPLETED
+,Test,,Lautoka City,Test,jlew921@gmail.com,123123123,very-large-church,0,0,0,200,Churchill Park: NexGen/Youths,AOG100-MOS5BNRV,COMPLETED
+,IFGTC,,Suva,ess,s,s,very-large-church,0,0,0,1,Main Arena,AOG100-MOHQFCTM,PENDING
+,International Full Gospel Tabernacle Church,,Suva,Rev. Tausia Kerto,jtaukei@gmail.com,8091792,large-church,0,0,0,1,Main Arena,AOG100-MMWPPNGA,PENDING
