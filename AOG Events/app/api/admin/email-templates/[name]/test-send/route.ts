@@ -71,6 +71,16 @@ const SAMPLE_VARS: Record<TemplateName, Record<string, string>> = {
     remainingBalance: "$8,500.00",
     statusNote: "Thank you — we'll let you know once your registration is fully paid.",
   },
+  registration_expiring_reminder: {
+    registrantName: "John",
+    recipientName: "Suva Central AG",
+    churchName: "Suva Central AG",
+    registrationId: "AOG100-TEST",
+    category: "Large Church",
+    numberOfTickets: "4",
+    fee: "$120.00",
+    eventName: "AOG Fiji 100th Anniversary",
+  },
 };
 
 function buildDataBlocks(name: TemplateName, vars: Record<string, string>): string[] {
@@ -128,6 +138,17 @@ function buildDataBlocks(name: TemplateName, vars: Record<string, string>): stri
       <table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;margin-bottom:20px;">
         ${pill("Registration ID", vars.registrationId)}
         ${pill("Category", vars.category)}
+      </table>
+    `);
+  }
+
+  if (name === "registration_expiring_reminder") {
+    blocks.push(`
+      <table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;">
+        ${pill("Registration ID", vars.registrationId)}
+        ${pill("Category", vars.category)}
+        ${pill("Tickets", vars.numberOfTickets)}
+        ${pill("Total (FJD)", vars.fee)}
       </table>
     `);
   }

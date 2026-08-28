@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { PaymentStatus, TicketStatus } from "@prisma/client";
+import { PaymentStatus } from "@prisma/client";
 import { sendTicketConfirmationEmail } from "@/lib/email";
 import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues, deriveRegistrationTypeLabel, formatPaymentStatusLabel } from "@/lib/tickets";
 import { getCurrentUser } from "@/lib/auth";
 import { format } from "date-fns";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
-import { releaseVenueAllocations } from "@/lib/venue-assignment";
+import { cancelRegistration } from "@/lib/cancel-registration";
 
 // PATCH /api/admin/registrations/[id] — one-click approve for a pending bank
 // transfer registration. Internally logs a FULL Payment row (rather than
@@ -133,59 +133,7 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Fetch the registration with its tickets
-      const registration = await tx.registration.findUnique({
-        where: { id },
-        include: {
-          tickets: { select: { id: true, status: true } },
-          venue: { select: { id: true, name: true } },
-        },
-      });
-
-      if (!registration) {
-        throw new Error("NOT_FOUND");
-      }
-
-      if (registration.paymentStatus === PaymentStatus.CANCELLED) {
-        throw new Error("ALREADY_CANCELLED");
-      }
-
-      const activeTicketCount = registration.tickets.filter(
-        (t) => t.status === TicketStatus.ACTIVE
-      ).length;
-
-      // 2. Mark registration as CANCELLED
-      await tx.registration.update({
-        where: { id },
-        data: { paymentStatus: PaymentStatus.CANCELLED },
-      });
-
-      // 3. Cancel all active tickets (invalidates QR codes immediately)
-      await tx.ticket.updateMany({
-        where: { registrationId: id, status: TicketStatus.ACTIVE },
-        data: { status: TicketStatus.CANCELLED },
-      });
-
-      // 4. Return seats to whichever venues this registration's headcount was
-      // split across (see lib/venue-assignment.ts), plus the legacy
-      // single-venue path for any pre-existing registration still using it.
-      await releaseVenueAllocations(tx, id);
-      if (registration.venueId && activeTicketCount > 0) {
-        await tx.venue.update({
-          where: { id: registration.venueId },
-          data: {
-            currentRegistrations: { decrement: activeTicketCount },
-          },
-        });
-      }
-
-      return {
-        registrationId: registration.registrationId,
-        ticketsCancelled: activeTicketCount,
-        venueName: registration.venue?.name ?? registration.venueId,
-      };
-    });
+    const result = await prisma.$transaction((tx) => cancelRegistration(tx, id));
 
     return NextResponse.json({
       success: true,

@@ -9,6 +9,7 @@ export async function GET() {
         venue: { select: { id: true, name: true } },
         venueAllocations: { include: { venue: { select: { id: true, name: true } } } },
         tickets: { select: { id: true, ticketNumber: true, status: true } },
+        payments: { select: { id: true } },
       },
       orderBy: {
         createdAt: 'desc',

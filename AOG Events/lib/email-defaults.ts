@@ -4,7 +4,8 @@ export type TemplateName =
   | "ticket_confirmation"
   | "confirmation_pdf"
   | "finance_payment_logged"
-  | "balance_update";
+  | "balance_update"
+  | "registration_expiring_reminder";
 
 export const TEMPLATE_NAMES: TemplateName[] = [
   "pending_registration",
@@ -13,6 +14,7 @@ export const TEMPLATE_NAMES: TemplateName[] = [
   "confirmation_pdf",
   "finance_payment_logged",
   "balance_update",
+  "registration_expiring_reminder",
 ];
 
 export interface EmailTemplateContent {
@@ -123,6 +125,20 @@ export const TEMPLATE_META: Record<TemplateName, TemplateMeta> = {
       { name: "statusNote", description: "Status message — auto-set by the system", sample: "" },
     ],
   },
+  registration_expiring_reminder: {
+    label: "Registration Expiring Soon",
+    description: "Sent 1 day before an unpaid bank transfer registration is auto-cancelled.",
+    variables: [
+      { name: "registrantName", description: "Registrant's name", sample: "John" },
+      { name: "recipientName", description: "Church name for church registrations, otherwise the registrant's name — use this for the greeting", sample: "Suva Central AG" },
+      { name: "churchName", description: "Church name (blank for Individual/Overseas)", sample: "Suva Central AG" },
+      { name: "registrationId", description: "Registration ID", sample: "AOG100-0001" },
+      { name: "category", description: "Category label", sample: "Large Church" },
+      { name: "numberOfTickets", description: "Number of tickets", sample: "4" },
+      { name: "fee", description: "Total fee (FJD)", sample: "$120.00" },
+      { name: "eventName", description: "Event name", sample: "AOG Fiji 100th Anniversary" },
+    ],
+  },
 };
 
 export const DEFAULT_TEMPLATES: Record<TemplateName, EmailTemplateContent> = {
@@ -185,5 +201,16 @@ Once the HQ Finance team manually matches your reference, you'll receive a confi
     ctaText: "",
     ctaUrl: "",
     closingHtml: `<p>Total paid: <strong>{{totalPaid}}</strong>. Remaining balance: <strong>{{remainingBalance}}</strong>.</p><p>{{statusNote}}</p>`,
+  },
+  registration_expiring_reminder: {
+    subject: "Action Needed – Registration {{registrationId}} Expires Tomorrow",
+    preHeading: "Registration Expiring Soon",
+    heading: "Hi {{recipientName}},",
+    bodyHtml: `<p>Your registration for <strong>{{eventName}}</strong> is still <strong>pending payment</strong> and no payment has been received yet.</p>
+<p>Unless we receive your bank transfer within the next <strong>24 hours</strong>, this registration will be <strong>automatically cancelled</strong> and your reserved tickets will be released back into the pool.</p>
+<p>If you've already made your payment, please make sure you included your Registration ID <strong>{{registrationId}}</strong> as the reference — this is how HQ Finance matches transfers to registrations.</p>`,
+    ctaText: "",
+    ctaUrl: "",
+    closingHtml: `<p>If you no longer wish to attend, no action is needed. If you have questions, please contact the registration team as soon as possible.</p>`,
   },
 };

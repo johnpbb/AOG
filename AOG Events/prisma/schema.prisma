@@ -254,6 +254,10 @@ model Registration {
   installmentCount    Int? // 5–10 when partial
   installmentDeadline DateTime?
 
+  // Spam/no-show auto-release: set once the day-4 warning email has gone
+  // out, so the daily cron doesn't re-send it before the day-5 cancellation.
+  expiryReminderSentAt DateTime?
+
   payments Payment[]
 
   checkedInAt      DateTime? // Legacy — first ever check-in timestamp (kept for backwards compat)

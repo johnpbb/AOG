@@ -50,6 +50,7 @@ const TEMPLATE_LABELS: Record<TemplateName, string> = {
   confirmation_pdf: "Online Payment",
   finance_payment_logged: "Finance — Payment Logged",
   balance_update: "Registrant — Balance Update",
+  registration_expiring_reminder: "Registration Expiring Soon",
 };
 
 export function EmailTemplatesPanel() {

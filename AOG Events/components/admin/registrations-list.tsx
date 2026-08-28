@@ -31,6 +31,16 @@ import { format } from "date-fns";
 import { RegistrationsCsvImporter } from "./registrations-csv-importer";
 import { RegistrationDetailsDialog } from "./registration-details-dialog";
 
+const EXPIRY_DAYS = 5;
+
+// Unpaid pending registrations auto-cancel after EXPIRY_DAYS with no payment
+// logged (see app/api/cron/expire-registrations) — surfaces how much time is
+// left so the registration team can prioritize manual follow-up calls.
+function daysUntilExpiry(createdAt: string) {
+  const deadline = new Date(createdAt).getTime() + EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+  return Math.ceil((deadline - Date.now()) / (24 * 60 * 60 * 1000));
+}
+
 export function RegistrationsList() {
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -296,6 +306,16 @@ export function RegistrationsList() {
                             </Button>
                           )}
                         </div>
+                        {reg.paymentStatus === "PENDING" && (!reg.payments || reg.payments.length === 0) && (
+                          (() => {
+                            const daysLeft = daysUntilExpiry(reg.createdAt);
+                            return (
+                              <div className={`text-xs mt-1 ${daysLeft <= 1 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                                {daysLeft > 0 ? `Expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}` : "Expiring today"}
+                              </div>
+                            );
+                          })()
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {format(new Date(reg.createdAt), "yyyy-MM-dd")}

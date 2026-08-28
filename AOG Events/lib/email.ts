@@ -261,6 +261,50 @@ export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
   });
 }
 
+// ── 1b. Registrant expiry-warning email (sent 1 day before auto-release) ─────
+
+interface ExpiryReminderEmailParams {
+  to: string;
+  registrantName: string;
+  churchName?: string;
+  registrationId: string;
+  category: string;
+  numberOfTickets: number;
+  fee: number;
+  eventName: string;
+}
+
+export async function sendExpiryReminderEmail(p: ExpiryReminderEmailParams) {
+  const template = await loadTemplate("registration_expiring_reminder");
+
+  const vars: Record<string, string> = {
+    registrantName: p.registrantName,
+    recipientName: p.churchName || p.registrantName,
+    churchName: p.churchName ?? "",
+    registrationId: p.registrationId,
+    category: p.category,
+    numberOfTickets: String(p.numberOfTickets),
+    fee: `$${p.fee.toFixed(2)}`,
+    eventName: p.eventName,
+  };
+
+  const dataBlocks: string[] = [
+    `<table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;">
+      ${pill("Registration ID", p.registrationId)}
+      ${p.churchName ? pill("Church", p.churchName) : ""}
+      ${pill("Category", p.category)}
+      ${pill("Tickets", String(p.numberOfTickets))}
+      ${pill("Total (FJD)", `$${p.fee.toFixed(2)}`)}
+    </table>`,
+  ];
+
+  const { subject, html } = renderEmailTemplate(template, vars, dataBlocks);
+  await transporter.sendMail({
+    from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
+    to: p.to, subject, html,
+  });
+}
+
 // ── 2. Admin notification email (new bank transfer pending) ──────────────────
 
 interface AdminNotificationParams {
