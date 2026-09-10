@@ -74,12 +74,6 @@ const SCHEDULE: ScheduleDay[] = [
         venue: "Tanoa Waterfront Hotel, Lautoka",
         note: "Thursday only",
       },
-      {
-        icon: BookOpen,
-        title: "Fire Bible Launch",
-        venue: "Churchill Park, Lautoka",
-        note: "Friday only",
-      },
       { icon: Moon, title: "Evening Rally", time: "From 6:30pm", venue: "Churchill Park, Lautoka" },
     ],
   },
@@ -90,6 +84,7 @@ const SCHEDULE: ScheduleDay[] = [
     fullLabel: "Saturday, 12 December",
     sessions: [
       { icon: Users, title: "NextGen Program", time: "9am – 1pm", venue: "Churchill Park, Lautoka" },
+      { icon: BookOpen, title: "Fire Bible Launch", venue: "Churchill Park, Lautoka" },
       {
         icon: PartyPopper,
         title: "Dinner Celebrations",
