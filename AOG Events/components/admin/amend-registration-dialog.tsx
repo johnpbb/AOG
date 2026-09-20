@@ -23,13 +23,13 @@ interface AmendRegistrationDialogProps {
   onAmended: () => void;
 }
 
-function CountField({ label, hint, value, onChange }: {
-  label: string; hint: string; value: string; onChange: (v: string) => void;
+function CountField({ label, hint, value, onChange, disabled }: {
+  label: string; hint: string; value: string; onChange: (v: string) => void; disabled?: boolean;
 }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Input type="number" min={0} value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input type="number" min={0} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} />
       <p className="text-[11px] text-muted-foreground">{hint}</p>
     </div>
   );
@@ -78,6 +78,10 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
 
   // Church fees are flat per category; only individual/overseas scale per head.
   const feeMoves = registration.type === "INDIVIDUAL";
+  // Matching the server rule in lib/amend-registration.ts: a paid individual's
+  // headcount is locked, because its fee is per-head and this tool never moves
+  // paymentStatus. Names stay editable.
+  const headcountLocked = feeMoves && isPaid;
 
   const namesMismatch =
     replaceNames && attendees !== null &&
@@ -140,10 +144,18 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
           <div>
             <p className="text-sm font-medium text-foreground mb-2">Headcount</p>
             <div className="grid grid-cols-3 gap-3">
-              <CountField label="Adults" hint={`now ${registration.adults ?? 0}`} value={adults} onChange={setAdults} />
-              <CountField label="Youth" hint={`now ${registration.youth ?? 0}`} value={youth} onChange={setYouth} />
-              <CountField label="Kids" hint={`now ${registration.kids ?? 0} · no ticket`} value={kids} onChange={setKids} />
+              <CountField label="Adults" hint={`now ${registration.adults ?? 0}`} value={adults} onChange={setAdults} disabled={headcountLocked} />
+              <CountField label="Youth" hint={`now ${registration.youth ?? 0}`} value={youth} onChange={setYouth} disabled={headcountLocked} />
+              <CountField label="Kids" hint={`now ${registration.kids ?? 0} · no ticket`} value={kids} onChange={setKids} disabled={headcountLocked} />
             </div>
+
+            {headcountLocked && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Headcount is locked: this registration is paid and its fee is charged per attendee,
+                so changing the numbers here would leave the amount owing out of step with what&apos;s
+                been received. You can still update the attendee names below.
+              </p>
+            )}
 
             <div className="flex items-center gap-3 mt-3 text-sm flex-wrap">
               <span className="text-muted-foreground">Total</span>
@@ -155,7 +167,7 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
                   {ticketDelta > 0 ? `+${ticketDelta} ticket(s) to issue` : `${Math.abs(ticketDelta)} ticket(s) to cancel`}
                 </Badge>
               )}
-              {feeMoves && newTotal !== oldTotal && (
+              {feeMoves && !headcountLocked && newTotal !== oldTotal && (
                 <Badge variant="outline" className="border-amber-300 text-amber-800">Fee will be recalculated</Badge>
               )}
             </div>

@@ -185,6 +185,26 @@ export async function amendRegistration(
     }
   }
 
+  // Individual/Overseas fees scale per head, and this tool deliberately never
+  // moves paymentStatus — so letting a paid individual's headcount change
+  // would silently desync fee from what's been received: upward it issues
+  // tickets for money never collected, downward it leaves an unflagged
+  // credit. Either way the registration still reads as Confirmed. Churches
+  // are exempt because their fee is flat per category, so a headcount change
+  // has no financial consequence. Names stay editable for every type, since
+  // renaming a ticket-holder can't affect the fee.
+  const headcountChanged =
+    adults !== registration.adults || youth !== registration.youth || kids !== registration.kids;
+  if (
+    headcountChanged &&
+    registration.type === "INDIVIDUAL" &&
+    registration.paymentStatus === "COMPLETED"
+  ) {
+    throw new AmendError(
+      "This is a paid individual registration, and its fee is charged per attendee — changing the headcount here would leave the amount owing out of step with what's been received. Adjust the attendee names if you need to, or cancel and re-register at the correct size so the fee and the ledger stay aligned."
+    );
+  }
+
   const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === registration.category);
   if (catInfo) {
     try {
