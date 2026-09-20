@@ -13,6 +13,41 @@ interface NamedAttendee {
 }
 
 /**
+ * Next free number in the global AOG-TKT-##### sequence. Every path that
+ * mints a ticket goes through here so numbering can't fork between the
+ * create-time bulk issue and the admin amend's incremental top-up.
+ */
+export async function nextTicketSequence(tx: any): Promise<number> {
+  const maxResult = await tx.$queryRaw<{ max: string | null }[]>`
+    SELECT MAX(CAST(SUBSTRING("ticketNumber" FROM 9) AS INTEGER)) AS max
+    FROM "Ticket"
+    WHERE "ticketNumber" LIKE 'AOG-TKT-%'
+  `;
+  return (Number(maxResult[0]?.max) || 0) + 1;
+}
+
+export interface TicketSpec {
+  ticketType: "ADULT" | "YOUTH";
+  attendeeId?: string;
+}
+
+/** Creates exactly the given tickets, numbered consecutively from the sequence head. */
+export async function createTickets(tx: any, registrationId: string, specs: TicketSpec[]) {
+  if (specs.length === 0) return 0;
+  const nextSeq = await nextTicketSequence(tx);
+  await tx.ticket.createMany({
+    data: specs.map((spec, i) => ({
+      ticketNumber: padTicketNumber(nextSeq + i),
+      registrationId,
+      status: "ACTIVE" as const,
+      ticketType: spec.ticketType,
+      ...(spec.attendeeId ? { attendeeId: spec.attendeeId } : {}),
+    })),
+  });
+  return specs.length;
+}
+
+/**
  * One ticket per attendee, linked via attendeeId, when the registration has
  * named attendees (public church CSV upload / individual name fields).
  * Falls back to bare nameless tickets from `adults`/`youth` counts when it
@@ -28,44 +63,22 @@ export async function generateTicketsForRegistration(
 ) {
   if (adults <= 0 && youth <= 0) return [];
 
-  const maxResult = await tx.$queryRaw<{ max: string | null }[]>`
-    SELECT MAX(CAST(SUBSTRING("ticketNumber" FROM 9) AS INTEGER)) AS max
-    FROM "Ticket"
-    WHERE "ticketNumber" LIKE 'AOG-TKT-%'
-  `;
-  const nextSeq = (Number(maxResult[0]?.max) || 0) + 1;
-
-  let ticketData: { ticketNumber: string; registrationId: string; status: "ACTIVE"; ticketType: "ADULT" | "YOUTH"; attendeeId?: string }[];
+  let specs: TicketSpec[];
 
   if (attendees.length > 0) {
-    const adultAttendees = attendees.filter((a) => a.ageCategory === "ADULT");
-    const youthAttendees = attendees.filter((a) => a.ageCategory === "YOUTH");
-    const ordered = [...adultAttendees, ...youthAttendees];
-    ticketData = ordered.map((a, i) => ({
-      ticketNumber: padTicketNumber(nextSeq + i),
-      registrationId,
-      status: "ACTIVE" as const,
-      ticketType: a.ageCategory,
-      attendeeId: a.id,
-    }));
+    const ordered = [
+      ...attendees.filter((a) => a.ageCategory === "ADULT"),
+      ...attendees.filter((a) => a.ageCategory === "YOUTH"),
+    ];
+    specs = ordered.map((a) => ({ ticketType: a.ageCategory, attendeeId: a.id }));
   } else {
-    ticketData = [
-      ...Array.from({ length: adults }, (_, i) => ({
-        ticketNumber: padTicketNumber(nextSeq + i),
-        registrationId,
-        status: "ACTIVE" as const,
-        ticketType: "ADULT" as const,
-      })),
-      ...Array.from({ length: youth }, (_, i) => ({
-        ticketNumber: padTicketNumber(nextSeq + adults + i),
-        registrationId,
-        status: "ACTIVE" as const,
-        ticketType: "YOUTH" as const,
-      })),
+    specs = [
+      ...Array.from({ length: adults }, () => ({ ticketType: "ADULT" as const })),
+      ...Array.from({ length: youth }, () => ({ ticketType: "YOUTH" as const })),
     ];
   }
 
-  await tx.ticket.createMany({ data: ticketData });
+  await createTickets(tx, registrationId, specs);
 
   return tx.ticket.findMany({
     where: { registrationId },

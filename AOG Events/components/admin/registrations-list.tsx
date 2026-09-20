@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Filter, Eye, MoreHorizontal, Download, Upload, Loader2, XCircle, CheckCircle } from "lucide-react";
+import { Search, Filter, Eye, MoreHorizontal, Download, Upload, Loader2, XCircle, CheckCircle, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -30,6 +30,7 @@ import {
 import { format } from "date-fns";
 import { RegistrationsCsvImporter } from "./registrations-csv-importer";
 import { RegistrationDetailsDialog } from "./registration-details-dialog";
+import { AmendRegistrationDialog } from "./amend-registration-dialog";
 
 const EXPIRY_DAYS = 5;
 
@@ -51,6 +52,7 @@ export function RegistrationsList() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [showImporter, setShowImporter] = useState(false);
   const [detailsReg, setDetailsReg] = useState<any | null>(null);
+  const [amendReg, setAmendReg] = useState<any | null>(null);
 
   useEffect(() => {
     fetchRegistrations();
@@ -343,6 +345,13 @@ export function RegistrationsList() {
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
+                              disabled={reg.paymentStatus === "CANCELLED"}
+                              onClick={() => setAmendReg(reg)}
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Amend Registration
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
                               disabled={reg.paymentStatus === "CANCELLED" || cancellingId === reg.id}
                               onClick={() => handleCancel(reg)}
@@ -367,6 +376,13 @@ export function RegistrationsList() {
         registration={detailsReg}
         open={!!detailsReg}
         onOpenChange={(open) => { if (!open) setDetailsReg(null); }}
+      />
+
+      <AmendRegistrationDialog
+        registration={amendReg}
+        open={!!amendReg}
+        onOpenChange={(open) => { if (!open) setAmendReg(null); }}
+        onAmended={() => fetchRegistrations(true)}
       />
     </div>
   );
