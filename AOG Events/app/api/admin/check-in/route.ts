@@ -189,31 +189,36 @@ export async function POST(request: Request) {
       message = "👋 Checked out — See you next session!";
     }
 
-    // Create attendance event
-    await prisma.attendanceEvent.create({
-      data: {
-        registrationId: registration.id,
-        ticketId: ticket.id,
-        eventDate: today,
-        type,
-      },
-    });
-
-    // Create DailyCheckIn on first check-in of the day
-    if (type === "CHECK_IN" && action === "CHECK_IN") {
-      await prisma.dailyCheckIn.upsert({
-        where: { ticketId_checkInDate: { ticketId: ticket.id, checkInDate: today } },
-        create: { registrationId: registration.id, ticketId: ticket.id, checkInDate: today },
-        update: {},
+    // One transaction for the whole scan: a partial write would leave the
+    // ticket with an AttendanceEvent but no DailyCheckIn, and since the next
+    // scan reads the last AttendanceEvent to decide what to do, a re-scan
+    // after a half-failure would be read as a CHECK_OUT.
+    await prisma.$transaction(async (tx) => {
+      await tx.attendanceEvent.create({
+        data: {
+          registrationId: registration.id,
+          ticketId: ticket.id,
+          eventDate: today,
+          type,
+        },
       });
 
-      if (!registration.checkedInAt) {
-        await prisma.registration.update({
-          where: { id: registration.id },
-          data: { checkedInAt: new Date() },
+      // Create DailyCheckIn on first check-in of the day
+      if (type === "CHECK_IN" && action === "CHECK_IN") {
+        await tx.dailyCheckIn.upsert({
+          where: { ticketId_checkInDate: { ticketId: ticket.id, checkInDate: today } },
+          create: { registrationId: registration.id, ticketId: ticket.id, checkInDate: today },
+          update: {},
         });
+
+        if (!registration.checkedInAt) {
+          await tx.registration.update({
+            where: { id: registration.id },
+            data: { checkedInAt: new Date() },
+          });
+        }
       }
-    }
+    });
 
     return NextResponse.json({
       success: true,
@@ -229,7 +234,12 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("Check-in Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // The door UI renders `message`; a bare `error` field would leave the
+    // gate steward looking at a blank red panel with nothing to act on.
+    return NextResponse.json({
+      success: false,
+      message: "⚠️ Scan failed — try again, or record this entry manually and continue.",
+    }, { status: 500 });
   }
 }
 

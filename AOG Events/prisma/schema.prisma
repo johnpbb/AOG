@@ -310,7 +310,10 @@ model DailyCheckIn {
   ticketId String?
   ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
-  @@unique([registrationId, checkInDate])
+  // Uniqueness is per TICKET per day, not per registration — a church brings
+  // many ticket-holders through the door on the same day. An earlier
+  // registration-level unique here silently capped that at one scan per
+  // registration per day; see prisma/migrations/drop_registration_daily_checkin_unique.sql.
   @@unique([ticketId, checkInDate])
   @@index([checkInDate])
   @@index([registrationId])
