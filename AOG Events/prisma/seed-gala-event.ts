@@ -43,14 +43,19 @@ async function main() {
     // Fiji is UTC+12 in December (no DST), so these are 4pm–9pm local.
     startDate: new Date("2026-12-12T16:00:00+12:00"),
     endDate: new Date("2026-12-12T21:00:00+12:00"),
-    status: "PUBLISHED" as const,
     location: "Sheraton Fiji Golf & Beach Resort, Denarau",
   };
 
+  // `status` is deliberately absent from `update` and DRAFT on `create`:
+  // seeding is content maintenance, not a decision to open ticket sales.
+  // An earlier version published on every run, which silently reopened the
+  // page after it had been taken down — and once put the gala live while the
+  // gala code was still undeployed, so the URL served the conference form.
+  // Going live is a deliberate act in Admin → Events.
   const event = await prisma.event.upsert({
     where: { slug: GALA_EVENT_SLUG },
     update: eventData,
-    create: { ...eventData, slug: GALA_EVENT_SLUG },
+    create: { ...eventData, slug: GALA_EVENT_SLUG, status: "DRAFT" },
   });
 
   // Keyed on name within this event so re-running never creates a second
@@ -84,6 +89,7 @@ async function main() {
   console.log(`  slug      /events/${event.slug}/register`);
   console.log(`  venue     ${venue.name}`);
   console.log(`  seats     ${venue.currentRegistrations} booked of ${venue.capacity}`);
+  console.log(`  status    ${event.status}${event.status === "PUBLISHED" ? " — LIVE, taking bookings" : " — not public; publish in Admin -> Events when ready"}`);
   if (existingVenue) {
     console.log(`  (capacity left at its current value — change it under Admin → Venues)`);
   }
