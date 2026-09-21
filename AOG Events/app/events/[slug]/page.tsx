@@ -4,6 +4,8 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { ArrowRight, ArrowLeft, MapPin, Users, Building2 } from "lucide-react";
 import { EventScheduleTabs } from "@/components/event-schedule-tabs";
+import { GALA_EVENT_SLUG } from "@/lib/types";
+import { GalaEventDetails } from "@/components/gala-event-details";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +29,13 @@ export default async function EventPage({ params }: Props) {
 
   if (!event) notFound();
 
+  // The gala is a single ticketed evening, so this page swaps the conference's
+  // hardcoded 7-day programme for its own details block, drops the venue
+  // capacity card (the block already names the venue, and the progress bar
+  // would advertise an empty room), and says "book tickets" rather than
+  // "register".
+  const isGala = event.slug === GALA_EVENT_SLUG;
+
   const totalCapacity = event.venues.reduce((s, v) => s + v.capacity, 0);
   const totalRegistered = event.venues.reduce((s, v) => s + v.currentRegistrations, 0);
   const pct = totalCapacity > 0 ? Math.round((totalRegistered / totalCapacity) * 100) : 0;
@@ -45,7 +54,7 @@ export default async function EventPage({ params }: Props) {
             href={`/events/${slug}/register`}
             className="inline-flex items-center gap-2 bg-brand-orange text-brand-white px-[22px] py-[10px] rounded-lg font-bold text-sm no-underline tracking-[0.03em]"
           >
-            Register Now <ArrowRight size={15} />
+            {isGala ? "Book Tickets" : "Register Now"} <ArrowRight size={15} />
           </Link>
         </div>
       </nav>
@@ -85,9 +94,9 @@ export default async function EventPage({ params }: Props) {
 
           {/* ── Main ────────────────────────────────────────────────────────── */}
           <div>
-            <EventScheduleTabs />
+            {isGala ? <GalaEventDetails /> : <EventScheduleTabs />}
 
-            {event.venues.length > 0 && (
+            {!isGala && event.venues.length > 0 && (
               <div>
                 <h2 className="text-xl font-bold text-brand-white mb-5">Venues</h2>
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
@@ -131,7 +140,7 @@ export default async function EventPage({ params }: Props) {
           {/* ── Sidebar CTA ─────────────────────────────────────────────────── */}
           <div className="lg:sticky lg:top-[92px]">
             <div className="bg-white/[0.04] border border-brand-orange/20 rounded-2xl p-7 text-center">
-              <h2 className="text-lg font-bold text-brand-white mb-2">Reserve Your Place</h2>
+              <h2 className="text-lg font-bold text-brand-white mb-2">{isGala ? "Book Your Tickets" : "Reserve Your Place"}</h2>
 
               {totalCapacity > 0 && (
                 <>
@@ -152,7 +161,7 @@ export default async function EventPage({ params }: Props) {
                 href={`/events/${slug}/register`}
                 className="flex items-center justify-center gap-2 bg-brand-orange text-brand-white px-5 py-[13px] rounded-lg font-bold text-sm no-underline tracking-[0.02em]"
               >
-                Register Now <ArrowRight size={15} />
+                {isGala ? "Book Tickets" : "Register Now"} <ArrowRight size={15} />
               </Link>
             </div>
           </div>
