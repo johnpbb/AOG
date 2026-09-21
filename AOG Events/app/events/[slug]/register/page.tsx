@@ -3,7 +3,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { EventRegistrationClient } from "@/components/event-registration-client";
+import { GalaRegistrationClient } from "@/components/gala-registration-client";
 import { sanitizeRichText } from "@/lib/sanitize-html";
+import { GALA_EVENT_SLUG } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,11 @@ export default async function EventRegisterPage({ params }: Props) {
   if (!event) notFound();
 
   const descriptionHtml = sanitizeRichText(event.description);
+
+  // The gala is a ticketed dinner, not a conference registration — same Event
+  // model, entirely different booking flow (no church path, no category
+  // picker, no age split). Keyed off the slug so it needs no schema change.
+  const isGala = event.slug === GALA_EVENT_SLUG;
 
   const serializedEvent = {
     id: event.id,
@@ -93,7 +100,11 @@ export default async function EventRegisterPage({ params }: Props) {
             its dark-mode pairing without touching this page's own brand-black chrome.
           */}
           <div className="dark">
-            <EventRegistrationClient event={serializedEvent} />
+            {isGala ? (
+              <GalaRegistrationClient event={serializedEvent} />
+            ) : (
+              <EventRegistrationClient event={serializedEvent} />
+            )}
           </div>
         </div>
       </main>

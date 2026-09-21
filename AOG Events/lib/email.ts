@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import QRCode from "qrcode";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { prisma } from "@/lib/prisma";
+import { isGalaCategory, GALA_DETAILS } from "@/lib/types";
 import { DEFAULT_TEMPLATES, EmailTemplateContent, TemplateName } from "./email-defaults";
 import { renderEmailTemplate, pill, divider } from "./email-renderer";
 
@@ -46,6 +47,10 @@ interface TicketPageParams {
   // legacy registrations with no linked Attendee.
   attendeeName: string;
   category: string;
+  // The raw category id (e.g. "gala-seat"), when the caller has it. Lets the
+  // ticket pick up gala-only details the generic Event model has no column
+  // for — the sitting time and the dress code.
+  categoryId?: string;
   registrationType: string;
   churchName?: string;
   district?: string;
@@ -74,6 +79,7 @@ async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
   const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const accentColor = TICKET_ACCENT_COLORS[p.ticketType];
+  const isGala = p.categoryId ? isGalaCategory(p.categoryId) : false;
 
   const label = (text: string, x: number, y: number) =>
     page.drawText(text, { x, y, size: 9, font: regular, color: rgb(0.44, 0.5, 0.59) });
@@ -84,9 +90,10 @@ async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
   page.drawText("AOG FIJI 100TH ANNIVERSARY", {
     x: 50, y: height - 70, size: 22, font: bold, color: rgb(0.1, 0.13, 0.17),
   });
-  page.drawText(`${p.ticketType === "ADULT" ? "Adult" : "Youth"} Entry Ticket`, {
-    x: 50, y: height - 94, size: 13, font: bold, color: accentColor,
-  });
+  page.drawText(
+    isGala ? "Gala Dinner Ticket" : `${p.ticketType === "ADULT" ? "Adult" : "Youth"} Entry Ticket`,
+    { x: 50, y: height - 94, size: 13, font: bold, color: accentColor }
+  );
 
   // Page counter (e.g. "Ticket 2 of 4")
   page.drawText(`Ticket ${p.pageNumber} of ${p.totalPages}`, {
@@ -143,22 +150,40 @@ async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
   label("PAYMENT STATUS", 75, height - 505);
   value(p.paymentStatusLabel, 75, height - 523, 11);
 
-  // Event details
-  page.drawText("Event Details", { x: 50, y: height - 575, size: 11, font: bold, color: rgb(0.1, 0.13, 0.17) });
-  label(p.eventName, 50, height - 593);
+  // Event details. Drawn against a running cursor rather than fixed offsets,
+  // so the gala's extra time/dress-code lines push the footer down instead of
+  // overprinting it.
+  let y = height - 575;
+  page.drawText("Event Details", { x: 50, y, size: 11, font: bold, color: rgb(0.1, 0.13, 0.17) });
+
+  y -= 18;
+  label(p.eventName, 50, y);
+
   const venue = [p.venueName, p.venueCity].filter(Boolean).join(", ");
   if (venue) {
-    label("VENUE", 50, height - 611);
-    value(venue, 50, height - 627, 13, accentColor);
-    if (p.eventDate) label(`Date: ${p.eventDate}`, 50, height - 645);
-  } else if (p.eventDate) {
-    label(`Date: ${p.eventDate}`, 50, height - 609);
+    y -= 18;
+    label("VENUE", 50, y);
+    y -= 16;
+    value(venue, 50, y, 13, accentColor);
+  }
+  if (p.eventDate) {
+    y -= 18;
+    label(`Date: ${p.eventDate}`, 50, y);
+  }
+  if (isGala) {
+    y -= 14;
+    label(`Time: ${GALA_DETAILS.timeLabel}`, 50, y);
+    y -= 14;
+    label(`Dress code: ${GALA_DETAILS.dressCode}`, 50, y);
   }
 
   // Footer
+  y -= 30;
   page.drawText(
-    "This ticket is non-transferable. Present this ticket with a valid ID at the registration desk. One scan per ticket.",
-    { x: 50, y: height - 675, size: 8, font: regular, color: rgb(0.6, 0.65, 0.72), maxWidth: 495 }
+    isGala
+      ? "This ticket is non-transferable. Please present it on arrival at the Golden Ballroom. One scan per ticket."
+      : "This ticket is non-transferable. Present this ticket with a valid ID at the registration desk. One scan per ticket.",
+    { x: 50, y, size: 8, font: regular, color: rgb(0.6, 0.65, 0.72), maxWidth: 495 }
   );
 }
 
@@ -362,6 +387,8 @@ interface TicketEmailParams {
   registrantName: string;
   registrationId: string;
   category: string;
+  /** Raw category id, so gala tickets can print their time and dress code. */
+  categoryId?: string;
   registrationType: string;
   churchName?: string;
   district?: string;
@@ -398,6 +425,7 @@ export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
   const pdfBuffer = await generateTicketsPdf(ticketAssets, {
     registrationId: p.registrationId,
     category: p.category,
+    categoryId: p.categoryId,
     registrationType: p.registrationType,
     churchName: p.churchName,
     district: p.district,

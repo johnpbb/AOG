@@ -132,6 +132,7 @@ export async function POST(
             registrantName: result.registration.registrarName || result.registration.email,
             registrationId: result.registration.registrationId,
             category: catInfo?.name ?? result.registration.category,
+            categoryId: result.registration.category,
             registrationType: deriveRegistrationTypeLabel(result.registration.type, result.registration.category),
             churchName: result.registration.church?.name,
             district: result.registration.church?.district ?? undefined,

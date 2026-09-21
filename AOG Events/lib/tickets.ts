@@ -113,6 +113,11 @@ export function summarizeTicketVenues(tickets: { venueName: string }[]): string 
 export function deriveRegistrationTypeLabel(type: string, category: string): string {
   if ((type || "").toUpperCase() === "CHURCH") return "Church";
   if (category === "overseas") return "Overseas";
+  // The gala is its own ticketed event, not a conference registration — it's
+  // stored as type=INDIVIDUAL but printing "Individual" on a dinner ticket
+  // would be meaningless to the person holding it at the door.
+  if (category === "gala-seat") return "Gala Dinner — Seat";
+  if (category === "gala-table") return "Gala Dinner — Table of 10";
   return "Individual";
 }
 

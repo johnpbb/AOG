@@ -126,6 +126,7 @@ export async function GET(request: Request) {
         registrantName: name,
         registrationId: updatedRegistration.registrationId,
         category: catInfo?.name ?? updatedRegistration.category,
+        categoryId: updatedRegistration.category,
         registrationType: deriveRegistrationTypeLabel(updatedRegistration.type, updatedRegistration.category),
         churchName: updatedRegistration.church?.name,
         district: updatedRegistration.church?.district ?? undefined,

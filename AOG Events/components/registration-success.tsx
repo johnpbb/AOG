@@ -24,6 +24,9 @@ interface RegistrationSuccessProps {
   numberOfTickets?: number;
   paymentType?: string;
   installmentCount?: number | null;
+  // Overridden by the gala booking flow, where "Register Another Church" is
+  // the wrong offer to make someone who just bought a dinner table.
+  newRegistrationLabel?: string;
   onNewRegistration: () => void;
 }
 
@@ -42,6 +45,7 @@ function PendingScreen({
   numberOfTickets,
   paymentType,
   installmentCount,
+  newRegistrationLabel,
   onNewRegistration,
 }: Omit<RegistrationSuccessProps, "paymentMethod">) {
   const [bank, setBank] = useState<BankDetails | null>(null);
@@ -173,7 +177,7 @@ function PendingScreen({
 
       <div className="pt-2 space-y-3">
         <Button onClick={onNewRegistration} variant="outline">
-          Register Another Church
+          {newRegistrationLabel ?? "Register Another Church"}
         </Button>
         <div className="flex items-center justify-center gap-4 text-sm">
           <Link href="/manage-registration" className="text-muted-foreground hover:text-foreground transition-colors">

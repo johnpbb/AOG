@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { verifyAmendToken } from "@/lib/amend-token";
-import { REGISTRATION_CATEGORIES } from "@/lib/types";
-import { autoAssignVenues, applyVenueAllocations, releaseVenueAllocations } from "@/lib/venue-assignment";
+import { REGISTRATION_CATEGORIES, computeRegistrationFee } from "@/lib/types";
+import { autoAssignVenues, applyVenueAllocations, releaseVenueAllocations, VenueOversoldError } from "@/lib/venue-assignment";
 import { checkCategoryCapacity, RegistrationCapacityError } from "@/lib/create-registration";
 
 // POST /api/register/amend — the write side of the public self-amend flow.
@@ -88,14 +88,23 @@ export async function POST(request: Request) {
         if (warnings.length > 0) {
           throw new Error("VALIDATION: This would exceed venue capacity. Please contact the event team for adjustments.");
         }
-        await applyVenueAllocations(tx, registration.id, allocations);
+        try {
+          await applyVenueAllocations(tx, registration.id, allocations);
+        } catch (err) {
+          if (err instanceof VenueOversoldError) throw new Error(`VALIDATION: ${err.message}`);
+          throw err;
+        }
 
         Object.assign(headcountUpdates, {
           adults,
           youth,
           kids,
           numberOfAttendees: total,
-          ...(registration.type === "INDIVIDUAL" && catInfo ? { fee: catInfo.fee * total } : {}),
+          // Block-priced categories (gala Table of 10) re-price per whole
+          // table, not per head — see computeRegistrationFee.
+          ...(registration.type === "INDIVIDUAL" && catInfo
+            ? { fee: computeRegistrationFee(catInfo, { isChurchPath: false, headcount: total }) }
+            : {}),
         });
       }
 

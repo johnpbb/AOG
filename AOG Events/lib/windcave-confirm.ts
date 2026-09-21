@@ -85,6 +85,7 @@ export async function confirmWindcavePayment(regId: string, sessionId?: string):
     registrantName: name,
     registrationId: updated.registrationId,
     category: catInfo?.name ?? updated.category,
+    categoryId: updated.category,
     registrationType: deriveRegistrationTypeLabel(updated.type, updated.category),
     churchName: updated.church?.name,
     district: updated.church?.district ?? undefined,

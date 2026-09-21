@@ -1,4 +1,4 @@
-import { REGISTRATION_CATEGORIES } from "@/lib/types";
+import { REGISTRATION_CATEGORIES, computeRegistrationFee } from "@/lib/types";
 import type { CreateRegistrationInput } from "@/lib/create-registration";
 
 // The upload template is a deliberate subset of the full registrations
@@ -122,7 +122,10 @@ export function validateCsvRow(
     return { rowNumber, raw, errors, input: null };
   }
 
-  const fee = catInfo ? (type === "individual" ? catInfo.fee * numberOfTickets : catInfo.fee) : 0;
+  // Preview only — createRegistrationRecord re-derives the authoritative fee.
+  const fee = catInfo
+    ? computeRegistrationFee(catInfo, { isChurchPath: type !== "individual", headcount: numberOfTickets })
+    : 0;
 
   const input: CreateRegistrationInput = {
     category,

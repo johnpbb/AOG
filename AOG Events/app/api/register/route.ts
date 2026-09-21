@@ -6,6 +6,7 @@ import {
 } from "@/lib/email";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { createRegistrationRecord, RegistrationCapacityError, RegistrationValidationError } from "@/lib/create-registration";
+import { VenueOversoldError } from "@/lib/venue-assignment";
 
 export async function POST(request: Request) {
   try {
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
       adults,
       youth,
       kids,
+      tables,
       paymentType,
       installmentCount,
       attendees,
@@ -63,6 +65,10 @@ export async function POST(request: Request) {
         adults: Math.max(0, parseInt(String(adults), 10) || 0),
         youth: Math.max(0, parseInt(String(youth), 10) || 0),
         kids: Math.max(0, parseInt(String(kids), 10) || 0),
+        // Whole blocks, for a block-priced category (gala Table of 10).
+        // undefined rather than 0 so createRegistrationRecord can tell "no
+        // table count supplied" from "zero tables requested".
+        tables: tables === undefined ? undefined : Math.max(0, parseInt(String(tables), 10) || 0),
         paymentType,
         installmentCount: parseInt(String(installmentCount), 10) || undefined,
         attendees,
@@ -133,7 +139,11 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Registration Error:", error);
 
-    if (error instanceof RegistrationCapacityError || error instanceof RegistrationValidationError) {
+    if (
+      error instanceof RegistrationCapacityError ||
+      error instanceof RegistrationValidationError ||
+      error instanceof VenueOversoldError
+    ) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
 

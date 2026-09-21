@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
-import { REGISTRATION_CATEGORIES } from "@/lib/types";
+import { REGISTRATION_CATEGORIES, computeRegistrationFee } from "@/lib/types";
 import { checkCategoryCapacity, RegistrationCapacityError } from "@/lib/create-registration";
-import { autoAssignVenues, applyVenueAllocations, releaseVenueAllocations } from "@/lib/venue-assignment";
+import { autoAssignVenues, applyVenueAllocations, releaseVenueAllocations, VenueOversoldError } from "@/lib/venue-assignment";
 import { createTickets } from "@/lib/tickets";
 import { planTicketReconciliation, AmendError } from "@/lib/ticket-reconciliation";
 
@@ -225,7 +225,12 @@ export async function amendRegistration(
     // the registration keeps the allocation it already had.
     throw new AmendError(`Venue capacity can't absorb this change:\n${warnings.join("\n")}`);
   }
-  await applyVenueAllocations(tx, registration.id, allocations);
+  try {
+    await applyVenueAllocations(tx, registration.id, allocations);
+  } catch (err) {
+    if (err instanceof VenueOversoldError) throw new AmendError(err.message);
+    throw err;
+  }
 
   // Tickets only exist once payment completed; before that there's nothing to
   // reconcile and they'll be minted from the final counts/names at approval.
@@ -248,9 +253,15 @@ export async function amendRegistration(
   }
 
   // Church fees are flat per category, so only individual/overseas fees move
-  // with the headcount.
-  const fee =
-    registration.type === "INDIVIDUAL" && catInfo ? catInfo.fee * total : registration.fee;
+  // with the headcount. Block-priced categories (gala Table of 10) re-price
+  // per whole table rather than per head — without this the shared helper's
+  // block branch, a 10-seat table would re-price to 10 x the table price.
+  const fee = catInfo
+    ? computeRegistrationFee(catInfo, {
+        isChurchPath: registration.type !== "INDIVIDUAL",
+        headcount: total,
+      })
+    : registration.fee;
 
   // No audit-log table exists, and Payment is a finance-only append-only
   // ledger that an attendee change has no business writing to — so the trail

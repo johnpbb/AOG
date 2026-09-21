@@ -1,4 +1,10 @@
-import { REGISTRATION_CATEGORIES, INSTALLMENT_DEADLINE, CategoryInfo } from "@/lib/types";
+import {
+  REGISTRATION_CATEGORIES,
+  INSTALLMENT_DEADLINE,
+  CategoryInfo,
+  computeRegistrationFee,
+  isGalaCategory,
+} from "@/lib/types";
 import { autoAssignVenues, applyVenueAllocations } from "@/lib/venue-assignment";
 import type { Prisma } from "@prisma/client";
 
@@ -39,6 +45,10 @@ export interface CreateRegistrationInput {
   adults?: number;
   youth?: number;
   kids?: number;
+  // Number of whole blocks booked, for a block-priced category (gala Table of
+  // 10). Authoritative over `adults` for those categories — the headcount is
+  // always derived as tables x seatsPerUnit so price and seats can't drift.
+  tables?: number;
   paymentType?: string;
   installmentCount?: number;
   // When present, this is the authoritative source for adults/youth counts
@@ -149,6 +159,7 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
   }
 
   const isChurchPath = (input.type || "").toLowerCase() === "church";
+  const isGala = isGalaCategory(catInfo.id);
 
   // Named attendees (church CSV upload / individual name fields), when
   // supplied, are the source of truth for adults/youth counts — this closes
@@ -157,7 +168,25 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
   // keep sending bare counts.
   let numAdults: number;
   let numYouth: number;
-  if (input.attendees && input.attendees.length > 0) {
+  if (isGala) {
+    // The gala is a single seated dinner: every guest is seated and ticketed
+    // as an adult at one price, so there's no youth/kids split to honour.
+    // Bookings are buyer-only — guest names are filled in afterwards through
+    // the admin amend flow, so no attendee rows are created here and the
+    // tickets start unnamed.
+    if (catInfo.seatsPerUnit) {
+      // Block-priced (Table of 10): denominated in whole tables, so the seat
+      // count is derived from `tables` and any client-sent counts are ignored.
+      const tables = Math.max(0, Math.trunc(input.tables ?? 0));
+      if (tables <= 0) {
+        throw new RegistrationValidationError(`${catInfo.name} must book at least one table.`);
+      }
+      numAdults = tables * catInfo.seatsPerUnit;
+    } else {
+      numAdults = Math.max(0, Math.trunc(input.adults ?? 0));
+    }
+    numYouth = 0;
+  } else if (input.attendees && input.attendees.length > 0) {
     for (const a of input.attendees) {
       if (!a.firstName?.trim() || !a.lastName?.trim()) {
         throw new RegistrationValidationError("Each attendee needs a first and last name.");
@@ -172,16 +201,16 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
     numAdults = Math.max(0, input.adults ?? 0);
     numYouth = Math.max(0, input.youth ?? 0);
   }
-  const numKids = Math.max(0, input.kids ?? 0);
+  const numKids = isGala ? 0 : Math.max(0, input.kids ?? 0);
   const qty = numAdults + numYouth + numKids;
   if (qty <= 0) {
     throw new RegistrationValidationError("At least one attendee is required.");
   }
-  // Kids don't receive a ticket/QR code — only adults and youth do.
-  const ticketQty = numAdults + numYouth;
   // Church fee is flat per registration regardless of headcount within its
-  // cap; individual/overseas fee scales per attendee.
-  const fee = isChurchPath ? catInfo.fee : catInfo.fee * qty;
+  // cap; block-priced categories charge per whole block; everything else
+  // scales per attendee.
+  const fee = computeRegistrationFee(catInfo, { isChurchPath, headcount: qty });
+  const isPartial = !isGala && input.paymentType === "partial";
 
   await checkCategoryCapacity(tx, catInfo, { adults: numAdults, youth: numYouth, kids: numKids });
 
@@ -224,10 +253,13 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
       adults: numAdults,
       youth: numYouth,
       kids: numKids,
-      paymentType: input.paymentType === "partial" ? "partial" : "full",
-      installmentCount: input.paymentType === "partial" ? Math.min(10, Math.max(2, input.installmentCount || 5)) : null,
-      installmentDeadline: input.paymentType === "partial" ? INSTALLMENT_DEADLINE : null,
-      ...(input.attendees && input.attendees.length > 0
+      // Gala tickets are paid in full — the installment plan exists for the
+      // conference's four- and five-figure church fees, and its deadline
+      // (30 Sep) falls before the gala anyway.
+      paymentType: isPartial ? "partial" : "full",
+      installmentCount: isPartial ? Math.min(10, Math.max(2, input.installmentCount || 5)) : null,
+      installmentDeadline: isPartial ? INSTALLMENT_DEADLINE : null,
+      ...(!isGala && input.attendees && input.attendees.length > 0
         ? {
             attendees: {
               create: input.attendees.map((a) => ({

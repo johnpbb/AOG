@@ -143,6 +143,7 @@ async function sendAmendedTickets(id: string) {
     registrantName: String(registrantName),
     registrationId: registration.registrationId,
     category: catInfo?.name ?? registration.category,
+    categoryId: registration.category,
     registrationType: deriveRegistrationTypeLabel(registration.type, registration.category),
     churchName: registration.church?.name,
     district: registration.church?.district ?? undefined,
