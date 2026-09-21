@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomBytes } from "crypto";
+import { getCurrentUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,13 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export async function POST(req: NextRequest) {
   try {
+    // This writes a file to the server's disk, so it can't stay open to
+    // anyone who finds the URL.
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
@@ -48,7 +56,10 @@ export async function POST(req: NextRequest) {
     const filepath = path.join(uploadDir, filename);
     await writeFile(filepath, buffer);
 
-    const url = `/uploads/banners/${filename}`;
+    // Served by app/api/media/[...path] rather than as a public/ static file:
+    // Next only serves public/ files that existed at build time, so a
+    // freshly uploaded banner would 404 until the next deploy.
+    const url = `/api/media/banners/${filename}`;
 
     return NextResponse.json({ url, filename });
   } catch (error) {
