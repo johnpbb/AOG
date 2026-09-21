@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
 import { AttendeeCountStepper } from "@/components/attendee-count-stepper";
 import { TurnstileWidget } from "@/components/turnstile-widget";
-import { User, CreditCard, Loader2, Armchair, Users, CalendarDays, Clock, MapPin, Shirt } from "lucide-react";
+import { User, CreditCard, Loader2, Armchair, Users, CalendarDays, Clock, MapPin, Shirt, Landmark, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type BookingMode = "seat" | "table";
@@ -46,6 +46,10 @@ export function GalaBookingForm({ eventId, seatsRemaining, onSubmit }: GalaBooki
   });
   const [seats, setSeats] = useState(1);
   const [tables, setTables] = useState(1);
+  // The gala takes internet banking and M-PAiSA. Both are settled by hand by
+  // HQ Finance, so this only records where to go looking for the money — it
+  // doesn't change the booking flow.
+  const [paymentMethod, setPaymentMethod] = useState<"bank-transfer" | "mpaisa">("bank-transfer");
 
   const updateFormData = (field: string, value: string) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -90,6 +94,7 @@ export function GalaBookingForm({ eventId, seatsRemaining, onSubmit }: GalaBooki
           // whole tables for a table booking.
           adults: mode === "seat" ? seats : undefined,
           tables: mode === "table" ? tables : undefined,
+          paymentMethod,
           ...formData,
         }),
       });
@@ -103,6 +108,7 @@ export function GalaBookingForm({ eventId, seatsRemaining, onSubmit }: GalaBooki
         fee: totalFee,
         numberOfTickets: totalSeats,
         mode,
+        paymentMethod,
       });
     } catch (err: any) {
       setIsProcessing(false);
@@ -311,17 +317,66 @@ export function GalaBookingForm({ eventId, seatsRemaining, onSubmit }: GalaBooki
         <div className="space-y-6">
           <div className="text-center">
             <h2 className="text-2xl font-semibold text-foreground">Payment</h2>
-            <p className="text-muted-foreground mt-1">Payment via Westpac Internet Bank Transfer</p>
+            <p className="text-muted-foreground mt-1">Choose how you&apos;d like to pay</p>
           </div>
 
-          <div className="p-4 rounded-lg border border-border bg-secondary/30">
-            <div className="font-medium text-foreground">Bank Transfer</div>
-            <div className="text-sm text-muted-foreground mt-1">
-              Pay via Westpac Internet Bank Transfer, or cash at your nearest AGFJ Divisional Office. Account
-              details are shown as soon as you submit this form. Your tickets are emailed once HQ Finance confirms
-              the payment.
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(
+              [
+                {
+                  id: "bank-transfer" as const,
+                  icon: Landmark,
+                  title: "Internet Banking",
+                  blurb: "Transfer to the AGFJ Westpac account. Details are shown as soon as you submit.",
+                },
+                {
+                  id: "mpaisa" as const,
+                  icon: Smartphone,
+                  title: "M-PAiSA",
+                  blurb: `Send your payment to ${GALA_DETAILS.mpaisaNumber}.`,
+                },
+              ]
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setPaymentMethod(opt.id)}
+                className={cn(
+                  "text-left p-5 rounded-xl border-2 transition-all",
+                  paymentMethod === opt.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-secondary/30 hover:border-primary/40"
+                )}
+              >
+                <opt.icon
+                  className={cn("h-5 w-5 mb-2", paymentMethod === opt.id ? "text-primary" : "text-muted-foreground")}
+                />
+                <div className="font-semibold text-foreground">{opt.title}</div>
+                <div className="text-xs text-muted-foreground mt-1 leading-relaxed">{opt.blurb}</div>
+              </button>
+            ))}
           </div>
+
+          {paymentMethod === "mpaisa" && (
+            <div className="p-5 rounded-xl border border-primary/30 bg-primary/5 space-y-2">
+              <p className="text-sm font-semibold text-foreground">Pay by M-PAiSA</p>
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="text-sm text-muted-foreground">Send to</span>
+                <span className="font-mono text-base font-bold text-foreground">{GALA_DETAILS.mpaisaNumber}</span>
+              </div>
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="text-sm text-muted-foreground">Amount</span>
+                <span className="font-bold text-foreground">${totalFee.toLocaleString()} FJD</span>
+              </div>
+              <p className="text-xs text-muted-foreground pt-1">
+                Quote the booking reference shown on the next screen so HQ Finance can match your payment.
+              </p>
+            </div>
+          )}
+
+          <p className="text-sm text-muted-foreground">
+            Your tickets are emailed once HQ Finance confirms the payment.
+          </p>
 
           <div className="p-4 rounded-lg bg-secondary space-y-2 text-sm">
             <h3 className="font-medium text-foreground">Booking Summary</h3>

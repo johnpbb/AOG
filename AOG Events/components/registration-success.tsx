@@ -27,6 +27,11 @@ interface RegistrationSuccessProps {
   // Overridden by the gala booking flow, where "Register Another Church" is
   // the wrong offer to make someone who just bought a dinner table.
   newRegistrationLabel?: string;
+  // Gala only: M-PAiSA is accepted alongside internet banking, and cash at a
+  // Divisional Office is not. The conference passes neither and is unchanged.
+  mpaisaNumber?: string;
+  showCashOption?: boolean;
+  chosenMethod?: "bank-transfer" | "mpaisa" | string;
   onNewRegistration: () => void;
 }
 
@@ -46,6 +51,9 @@ function PendingScreen({
   paymentType,
   installmentCount,
   newRegistrationLabel,
+  mpaisaNumber,
+  showCashOption = true,
+  chosenMethod,
   onNewRegistration,
 }: Omit<RegistrationSuccessProps, "paymentMethod">) {
   const [bank, setBank] = useState<BankDetails | null>(null);
@@ -129,9 +137,42 @@ function PendingScreen({
         ) : (
           <p className="text-sm text-muted-foreground">Bank details will be emailed to you shortly.</p>
         )}
-        <p className="text-sm text-muted-foreground">
-          Or pay cash at your nearest AGFJ Divisional Office or Headquarters.
-        </p>
+        {mpaisaNumber && (
+          <div
+            className={
+              "rounded-lg p-4 space-y-2 border " +
+              (chosenMethod === "mpaisa" ? "border-primary/40 bg-primary/5" : "border-border bg-secondary/40")
+            }
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold text-foreground">Or pay by M-PAiSA</span>
+              {chosenMethod === "mpaisa" && (
+                <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Your choice</span>
+              )}
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Send to</span>
+              <span className="font-mono font-semibold text-foreground">{mpaisaNumber}</span>
+            </div>
+            {fee !== undefined && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Amount (FJD)</span>
+                <span className="font-bold text-foreground">${fee.toLocaleString()}.00</span>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Include your Registration ID{" "}
+              <span className="font-mono font-semibold text-foreground">{registrationId}</span> in the M-PAiSA
+              reference so HQ Finance can match your payment.
+            </p>
+          </div>
+        )}
+
+        {showCashOption && (
+          <p className="text-sm text-muted-foreground">
+            Or pay cash at your nearest AGFJ Divisional Office or Headquarters.
+          </p>
+        )}
       </div>
 
       {/* FAQ #2 — How will HQ identify your payment */}
@@ -139,7 +180,8 @@ function PendingScreen({
         <p className="text-sm font-semibold text-foreground">2. How will HQ identify my payment?</p>
         <p className="text-sm text-muted-foreground">
           You <span className="font-semibold">must</span> include your Unique Registration ID{" "}
-          <span className="font-mono font-semibold text-foreground">{registrationId}</span> in the payment narration / reference field of your bank transfer.
+          <span className="font-mono font-semibold text-foreground">{registrationId}</span> in the payment narration /
+          reference field of your {mpaisaNumber ? "bank transfer or M-PAiSA payment" : "bank transfer"}.
         </p>
       </div>
 
@@ -156,7 +198,7 @@ function PendingScreen({
       <div className="max-w-sm mx-auto rounded-xl border border-border bg-card p-5 text-left space-y-2">
         <p className="text-sm font-semibold text-foreground">4. Forward your remittance advice</p>
         <p className="text-sm text-muted-foreground">
-          Please forward your bank remittance advice, along with your Unique Registration ID{" "}
+          Please forward your {mpaisaNumber ? "payment receipt" : "bank remittance advice"}, along with your Unique Registration ID{" "}
           <span className="font-mono font-semibold text-foreground">{registrationId}</span>, to{" "}
           <a href="mailto:aogfj_finance@connect.com.fj" className="font-medium text-foreground underline">
             aogfj_finance@connect.com.fj

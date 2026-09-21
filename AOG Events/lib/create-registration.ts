@@ -58,6 +58,20 @@ export interface CreateRegistrationInput {
   formData?: Record<string, unknown>;
 }
 
+/**
+ * Which stored PaymentMethod a submitted choice maps to. M-PAiSA is gated to
+ * the gala: it's the only product the client accepts it for, so a conference
+ * form that posted "mpaisa" would be falling back to a channel nobody is
+ * watching for that money. Anything unrecognised becomes BANK_TRANSFER, the
+ * universally-accepted default.
+ */
+function resolvePaymentMethod(raw: string | undefined, isGala: boolean): "ONLINE" | "MPAISA" | "BANK_TRANSFER" {
+  const method = (raw || "").toLowerCase();
+  if (method === "online") return "ONLINE";
+  if (method === "mpaisa" && isGala) return "MPAISA";
+  return "BANK_TRANSFER";
+}
+
 export class RegistrationCapacityError extends Error {
   constructor(message: string) {
     super(message);
@@ -246,7 +260,7 @@ export async function createRegistrationRecord(tx: Prisma.TransactionClient, inp
       contactEmail: input.contactEmail || null,
       eventId: input.eventId,
       fee,
-      paymentMethod: input.paymentMethod === "online" ? "ONLINE" : "BANK_TRANSFER",
+      paymentMethod: resolvePaymentMethod(input.paymentMethod, isGala),
       paymentStatus: "PENDING",
       formData: (input.formData || {}) as Prisma.InputJsonValue,
       numberOfAttendees: qty,

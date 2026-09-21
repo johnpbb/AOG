@@ -7,6 +7,7 @@ import {
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { createRegistrationRecord, RegistrationCapacityError, RegistrationValidationError } from "@/lib/create-registration";
 import { VenueOversoldError } from "@/lib/venue-assignment";
+import { isGalaCategory, GALA_DETAILS } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
@@ -109,6 +110,10 @@ export async function POST(request: Request) {
         installmentDeadline: result.registration.installmentDeadline
           ? result.registration.installmentDeadline.toLocaleDateString("en-FJ", { day: "numeric", month: "long", year: "numeric" })
           : undefined,
+        // Gala tickets can also be paid by M-PAiSA, so the number goes in the
+        // pending email alongside the bank details. Conference registrations
+        // get no M-PAiSA block.
+        mpaisaNumber: isGalaCategory(category) ? GALA_DETAILS.mpaisaNumber : undefined,
       };
 
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

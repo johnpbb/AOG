@@ -42,6 +42,15 @@ function daysUntilExpiry(createdAt: string) {
   return Math.ceil((deadline - Date.now()) / (24 * 60 * 60 * 1000));
 }
 
+// Methods HQ Finance settles by hand, and so can approve in one click. Only
+// ONLINE is excluded — a gateway payment confirms itself. M-PAiSA joined this
+// list when the gala started accepting it; without that, an M-PAiSA booking
+// would render no Approve button at all.
+const MANUALLY_SETTLED_METHODS = ["BANK_TRANSFER", "MPAISA", "CASH", "WORLD_REMIT"];
+function isManuallySettled(method: string | null | undefined): boolean {
+  return MANUALLY_SETTLED_METHODS.includes(String(method ?? ""));
+}
+
 export function RegistrationsList() {
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -294,7 +303,7 @@ export function RegistrationsList() {
                               : reg.paymentStatus === "CANCELLED" ? "Cancelled"
                               : "Pending"}
                           </Badge>
-                          {reg.paymentStatus === "PENDING" && reg.paymentMethod === "BANK_TRANSFER" && (
+                          {reg.paymentStatus === "PENDING" && isManuallySettled(reg.paymentMethod) && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -334,7 +343,7 @@ export function RegistrationsList() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            {reg.paymentStatus === "PENDING" && reg.paymentMethod === "BANK_TRANSFER" && (
+                            {reg.paymentStatus === "PENDING" && isManuallySettled(reg.paymentMethod) && (
                               <DropdownMenuItem
                                 className="text-green-700 focus:text-green-700"
                                 disabled={approvingId === reg.id}

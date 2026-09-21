@@ -228,6 +228,9 @@ interface PendingEmailParams {
   paymentType?: string;
   installmentCount?: number | null;
   installmentDeadline?: string;
+  // Gala only: the M-PAiSA number tickets can be paid to. Absent for the
+  // conference, which takes bank transfer and cash only.
+  mpaisaNumber?: string;
 }
 
 export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
@@ -249,6 +252,7 @@ export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
     paymentType: p.paymentType ?? "full",
     installmentCount: p.installmentCount ? String(p.installmentCount) : "",
     installmentDeadline: p.installmentDeadline ?? "30 September 2026",
+    mpaisaNumber: p.mpaisaNumber ?? "",
   };
 
   const dataBlocks: string[] = [
@@ -276,6 +280,18 @@ export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
       <p style="margin:16px 0 0;font-size:12px;color:rgba(255,255,255,0.4);">
         ⚠ Please use your Registration ID <strong style="color:#ffffff;">${p.registrationId}</strong> as the payment reference so we can match your transfer.
       </p>
+    `);
+  }
+
+  if (p.mpaisaNumber) {
+    dataBlocks.push(`
+      ${divider()}
+      <p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#ffffff;">Or Pay by M-PAiSA</p>
+      <table cellpadding="0" cellspacing="0" style="width:100%;background:#1e1e1e;border-radius:8px;padding:20px;border:1px solid rgba(255,108,0,0.2);">
+        ${pill("Send to", p.mpaisaNumber)}
+        ${pill("Amount (FJD)", `$${p.fee.toFixed(2)}`)}
+        ${pill("Reference", p.registrationId)}
+      </table>
     `);
   }
 

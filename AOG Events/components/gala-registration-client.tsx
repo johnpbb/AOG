@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { GalaBookingForm } from "@/components/gala-booking-form";
 import { RegistrationSuccess } from "@/components/registration-success";
+import { GALA_DETAILS } from "@/lib/types";
 
 interface SerializedVenue {
   id: string;
@@ -31,6 +32,7 @@ export function GalaRegistrationClient({ event }: Props) {
     email: string;
     fee: number;
     numberOfTickets: number;
+    paymentMethod: string;
   } | null>(null);
 
   // The ballroom is the "adults" venue on this event — the same row
@@ -50,6 +52,11 @@ export function GalaRegistrationClient({ event }: Props) {
         numberOfTickets={booking.numberOfTickets}
         paymentMethod="bank-transfer"
         newRegistrationLabel="Book More Seats"
+        // The gala takes internet banking and M-PAiSA; cash at a Divisional
+        // Office is a conference-only channel.
+        mpaisaNumber={GALA_DETAILS.mpaisaNumber}
+        showCashOption={false}
+        chosenMethod={booking.paymentMethod}
         onNewRegistration={() => setBooking(null)}
       />
     );
@@ -65,6 +72,7 @@ export function GalaRegistrationClient({ event }: Props) {
           email: String(data.email),
           fee: Number(data.fee),
           numberOfTickets: Number(data.numberOfTickets),
+          paymentMethod: String(data.paymentMethod ?? "bank-transfer"),
         })
       }
     />

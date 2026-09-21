@@ -62,7 +62,10 @@ export async function POST(
           registrationId: id,
           amount: parseFloat(String(amount)),
           entryType: entryType === "INSTALLMENT" ? "INSTALLMENT" : "FULL",
-          method: method === "CASH" ? "CASH" : method === "ONLINE" ? "ONLINE" : "BANK_TRANSFER",
+          // Whitelist rather than trusting the posted string: an unknown
+          // value silently becoming BANK_TRANSFER would misfile where the
+          // money actually landed.
+          method: ["CASH", "ONLINE", "MPAISA", "WORLD_REMIT"].includes(method) ? method : "BANK_TRANSFER",
           referenceNote: referenceNote || null,
           installmentNo: installmentNo ? parseInt(String(installmentNo), 10) : null,
           confirmedById: currentUser.id,

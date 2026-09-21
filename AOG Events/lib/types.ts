@@ -175,6 +175,10 @@ export const GALA_DETAILS = {
   dressCode: "Semi-formal",
   enquiriesEmail: "agfjevents@gmail.com",
   enquiriesPhone: "+679 9359922",
+  // M-PAiSA is accepted for gala tickets only — the conference takes Westpac
+  // transfers and cash at a Divisional Office. Buyers send the ticket amount
+  // straight to this number and quote their booking reference.
+  mpaisaNumber: "+679 9359922",
 } as const;
 
 /**
