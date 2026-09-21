@@ -234,7 +234,10 @@ interface PendingEmailParams {
 }
 
 export async function sendPendingRegistrationEmail(p: PendingEmailParams) {
-  const template = await loadTemplate("pending_registration");
+  // The gala has its own template: it takes internet banking and M-PAiSA only,
+  // with no cash-at-a-Divisional-Office option and no installment plan, so the
+  // conference copy would contradict the payment blocks below it.
+  const template = await loadTemplate(p.mpaisaNumber ? "pending_registration_gala" : "pending_registration");
 
   const vars: Record<string, string> = {
     registrantName: p.registrantName,

@@ -45,6 +45,7 @@ interface TemplateRow {
 
 const TEMPLATE_LABELS: Record<TemplateName, string> = {
   pending_registration: "Registration Received",
+  pending_registration_gala: "Gala Booking Received",
   admin_notification: "Admin Notification",
   ticket_confirmation: "Ticket Confirmation",
   confirmation_pdf: "Online Payment",

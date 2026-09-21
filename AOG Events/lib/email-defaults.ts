@@ -1,5 +1,6 @@
 export type TemplateName =
   | "pending_registration"
+  | "pending_registration_gala"
   | "admin_notification"
   | "ticket_confirmation"
   | "confirmation_pdf"
@@ -9,6 +10,7 @@ export type TemplateName =
 
 export const TEMPLATE_NAMES: TemplateName[] = [
   "pending_registration",
+  "pending_registration_gala",
   "admin_notification",
   "ticket_confirmation",
   "confirmation_pdf",
@@ -59,6 +61,25 @@ export const TEMPLATE_META: Record<TemplateName, TemplateMeta> = {
       { name: "paymentType", description: "full or partial", sample: "partial" },
       { name: "installmentCount", description: "Number of installments chosen (if partial)", sample: "6" },
       { name: "installmentDeadline", description: "Final installment deadline", sample: "30 September 2026" },
+    ],
+  },
+  pending_registration_gala: {
+    label: "Gala Booking Received",
+    description:
+      "Sent to the buyer when a gala dinner booking is submitted. Separate from the conference version because the gala takes internet banking and M-PAiSA only \u2014 no cash at a Divisional Office, and no installment plan.",
+    variables: [
+      { name: "registrantName", description: "Buyer's name", sample: "John" },
+      { name: "recipientName", description: "Buyer's name \u2014 use this for the greeting", sample: "John" },
+      { name: "registrationId", description: "Booking reference", sample: "AG100-000GS2" },
+      { name: "category", description: "Seat or table", sample: "Gala Dinner \u2014 Table of 10" },
+      { name: "numberOfTickets", description: "Number of seats", sample: "10" },
+      { name: "fee", description: "Total due (FJD)", sample: "$3000.00" },
+      { name: "bankName", description: "Bank name", sample: "Westpac Banking Corporation (WBC)" },
+      { name: "bankAccountName", description: "Account name", sample: "AOG Fiji Consol" },
+      { name: "bankAccountNumber", description: "Account number", sample: "9800759590" },
+      { name: "bankBranch", description: "Branch / BSB", sample: "Suva" },
+      { name: "mpaisaNumber", description: "M-PAiSA number tickets can be paid to", sample: "+679 9359922" },
+      { name: "eventName", description: "Event name", sample: "The Journey \u2014 AGFJ100 Gala Dinner" },
     ],
   },
   admin_notification: {
@@ -156,6 +177,21 @@ Once the HQ Finance team manually matches your reference, you'll receive a confi
     ctaText: "",
     ctaUrl: "",
     closingHtml: `<p>If you chose a partial payment plan, all installments must be fully paid by <strong>{{installmentDeadline}}</strong>. Entry QR tokens are issued once your registration is fully paid.</p>`,
+  },
+  pending_registration_gala: {
+    subject: "Gala Booking Received \u2013 {{registrationId}}",
+    preHeading: "Booking Received",
+    heading: "Hi {{recipientName}},",
+    bodyHtml: `<p>Your booking for <strong>{{eventName}}</strong> has been received and is currently <strong>pending payment verification</strong>.</p>
+<p><strong>1. How can I pay for my tickets?</strong><br/>
+By internet banking to the account below, or by M-PAiSA to <strong>{{mpaisaNumber}}</strong>.</p>
+<p><strong>2. How will HQ identify my payment?</strong><br/>
+You must include your booking reference <strong>{{registrationId}}</strong> in the payment narration / reference field.</p>
+<p><strong>3. I&#39;ve paid &mdash; now what?</strong><br/>
+Once the HQ Finance team matches your reference, your tickets will be emailed to you as QR codes. Present them on arrival at the Golden Ballroom.</p>`,
+    ctaText: "",
+    ctaUrl: "",
+    closingHtml: `<p>Tickets are issued once your booking is paid in full. If you have any questions, contact us at <strong>agfjevents@gmail.com</strong> or <strong>+679 9359922</strong>.</p>`,
   },
   admin_notification: {
     subject: "[Action Required] New Remittance – {{registrationId}}",
