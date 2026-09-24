@@ -61,17 +61,19 @@ export default async function EventPage({ params }: Props) {
 
       {/* ── BANNER ──────────────────────────────────────────────────────────── */}
       {event.bannerUrl ? (
-        <div className="relative w-full h-[220px] sm:h-[300px] md:h-[380px] overflow-hidden">
-          <Image src={event.bannerUrl} alt={event.name} fill className="object-contain" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 px-6 sm:px-10 pb-6 sm:pb-9">
-            <div className="max-w-[1200px] mx-auto">
-              <h1 className="text-[clamp(24px,4vw,48px)] font-extrabold text-brand-white leading-[1.35] font-boldonse">
-                {event.name}
-              </h1>
-            </div>
+        // Banners are artwork with their own text and come in any shape, so show
+        // the whole image at its natural ratio below the fixed nav, and keep the
+        // page title off it.
+        <>
+          <div className="pt-[68px]">
+            <Image src={event.bannerUrl} alt={event.name} width={0} height={0} sizes="100vw" className="block w-auto h-auto max-w-full max-h-[440px] mx-auto [mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]" priority />
           </div>
-        </div>
+          <div className="max-w-[1200px] mx-auto px-5 sm:px-10 pt-10">
+            <h1 className="text-[clamp(24px,4vw,48px)] font-extrabold text-brand-white leading-[1.35] font-boldonse">
+              {event.name}
+            </h1>
+          </div>
+        </>
       ) : (
         <div className="h-[260px] tapa-bg relative flex items-center">
           <div className="absolute inset-0 bg-black/55" />
