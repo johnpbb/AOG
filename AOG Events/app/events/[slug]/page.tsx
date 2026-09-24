@@ -61,12 +61,13 @@ export default async function EventPage({ params }: Props) {
 
       {/* ── BANNER ──────────────────────────────────────────────────────────── */}
       {event.bannerUrl ? (
-        // Banners are artwork with their own text and come in any shape, so show
-        // the whole image at its natural ratio below the fixed nav, and keep the
-        // page title off it.
+        // Banners are 16:9 artwork with their own text: full-width cover below the
+        // fixed nav, capped at 70vh, with the page title kept off it.
         <>
           <div className="pt-[68px]">
-            <Image src={event.bannerUrl} alt={event.name} width={0} height={0} sizes="100vw" className="block w-auto h-auto max-w-full max-h-[440px] mx-auto [mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]" priority />
+            <div className="relative w-full aspect-[16/9] max-h-[70vh] overflow-hidden">
+              <Image src={event.bannerUrl} alt={event.name} fill sizes="100vw" className="object-cover object-center" priority />
+            </div>
           </div>
           <div className="max-w-[1200px] mx-auto px-5 sm:px-10 pt-10">
             <h1 className="text-[clamp(24px,4vw,48px)] font-extrabold text-brand-white leading-[1.35] font-boldonse">
