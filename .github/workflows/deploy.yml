@@ -28,17 +28,34 @@ jobs:
             git fetch origin
             git reset --hard origin/main
 
+            # npm ci wipes node_modules under the running app, so only do it
+            # when the lockfile has actually changed.
             echo "── Installing dependencies ──"
-            npm ci
+            LOCK_SHA=$(sha1sum package-lock.json | cut -d' ' -f1)
+            if [ "$LOCK_SHA" != "$(cat node_modules/.deploy-lock-sha 2>/dev/null)" ]; then
+              npm ci
+              echo "$LOCK_SHA" > node_modules/.deploy-lock-sha
+            else
+              echo "lockfile unchanged, skipping"
+            fi
 
-            echo "── Applying DB migrations ──"
-            npx prisma db push --accept-data-loss
+            # No automatic schema sync: `prisma db push --accept-data-loss` would
+            # silently drop columns on prod. Apply schema changes by hand.
 
+            # Build into whichever slot is not live. The VPS is shared and has
+            # OOM-killed builds; with set -e a failed build stops here and the
+            # live site keeps serving the old slot untouched.
             echo "── Building ──"
-            npm run build
+            if [ "$(readlink .next 2>/dev/null)" = ".next-a" ]; then SLOT=.next-b; else SLOT=.next-a; fi
+            rm -rf "$SLOT"
+            NEXT_DIST_DIR="$SLOT" npm run build
+            test -f "$SLOT/BUILD_ID"
 
-            echo "── Restarting app ──"
+            echo "── Switching to $SLOT and restarting ──"
             bash ~/apps/aog/stop
+            # First run only: .next is still a real directory, keep it as a fallback.
+            if [ -d .next ] && [ ! -L .next ]; then rm -rf .next-prev; mv .next .next-prev; fi
+            ln -sfn "$SLOT" .next
             bash ~/apps/aog/start
 
             echo "── Done ──"
