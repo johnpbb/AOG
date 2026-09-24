@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 // what happened to the gala banner. Uploads are served through this handler
 // instead, which reads from disk per request and so shows them immediately.
 const UPLOAD_ROOT = path.join(process.cwd(), "public", "uploads");
+const PROD_MEDIA_URL = "https://events.agfiji.org/api/media";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
@@ -52,6 +53,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
       },
     });
   } catch {
+    // Uploads exist only on the server, so a local checkout is missing most
+    // banners. In dev, fall back to the live copy so pages look like prod.
+    if (process.env.NODE_ENV === "development") {
+      return NextResponse.redirect(`${PROD_MEDIA_URL}/${segments.map(encodeURIComponent).join("/")}`);
+    }
     return new NextResponse("Not found", { status: 404 });
   }
 }
