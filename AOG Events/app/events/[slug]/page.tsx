@@ -61,12 +61,12 @@ export default async function EventPage({ params }: Props) {
 
       {/* ── BANNER ──────────────────────────────────────────────────────────── */}
       {event.bannerUrl ? (
-        <div className="relative h-[380px] overflow-hidden">
-          <Image src={event.bannerUrl} alt={event.name} fill className="object-contain" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 px-10 pb-9">
+        <div className="relative w-full h-[220px] sm:h-[300px] md:h-[380px] overflow-hidden">
+          <Image src={event.bannerUrl} alt={event.name} fill className="object-cover object-center" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 px-6 sm:px-10 pb-6 sm:pb-9">
             <div className="max-w-[1200px] mx-auto">
-              <h1 className="text-[clamp(28px,4vw,48px)] font-extrabold text-brand-white leading-[1.35] font-boldonse">
+              <h1 className="text-[clamp(24px,4vw,48px)] font-extrabold text-brand-white leading-[1.35] font-boldonse">
                 {event.name}
               </h1>
             </div>
