@@ -14,7 +14,7 @@ export default function Loading() {
       </nav>
 
       <div className="pt-[68px]">
-        <Skeleton className="w-full aspect-[16/9] max-h-[70vh] bg-white/5 rounded-none" />
+        <Skeleton className="w-full aspect-[16/9] max-h-[max(70vh,30vw)] bg-white/5 rounded-none" />
       </div>
 
       <div className="max-w-[960px] mx-auto px-6 py-12 space-y-6">

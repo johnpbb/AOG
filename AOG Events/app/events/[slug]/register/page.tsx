@@ -70,7 +70,7 @@ export default async function EventRegisterPage({ params }: Props) {
       {/* ── BANNER ──────────────────────────────────────────────────────────── */}
       {event.bannerUrl && (
         <div className="pt-[68px]">
-          <div className="relative w-full aspect-[16/9] max-h-[70vh] overflow-hidden">
+          <div className="relative w-full aspect-[16/9] max-h-[max(70vh,30vw)] overflow-hidden">
             <Image src={event.bannerUrl} alt={event.name} fill sizes="100vw" className="object-cover object-center" priority />
           </div>
         </div>
