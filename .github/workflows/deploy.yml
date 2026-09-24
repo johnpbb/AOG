@@ -58,4 +58,12 @@ jobs:
             ln -sfn "$SLOT" .next
             bash ~/apps/aog/start
 
+            # Each route is slow on its first hit after a restart, so take that
+            # hit here instead of leaving it to the first visitor.
+            echo "── Warming up ──"
+            sleep 5
+            for p in / /events /events/aog-100th-anniversary /events/aog-100th-anniversary/register /events/the-journey-gala-dinner /events/the-journey-gala-dinner/register; do
+              curl -s -o /dev/null -m 60 -w "$p %{http_code} %{time_total}s\n" "http://127.0.0.1:17584$p" || true
+            done
+
             echo "── Done ──"
