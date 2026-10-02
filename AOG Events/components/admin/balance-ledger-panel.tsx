@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Search, Wallet } from "lucide-react";
+import { Loader2, Search, Upload, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { LogPaymentDialog } from "./log-payment-dialog";
+import { BankStatementImporter } from "./bank-statement-importer";
 
 interface LedgerRow {
   id: string;
@@ -29,6 +30,7 @@ export function BalanceLedgerPanel() {
   const [loading, setLoading] = useState(true);
   const [activeRow, setActiveRow] = useState<LedgerRow | null>(null);
   const [search, setSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
 
   function load() {
     setLoading(true);
@@ -58,13 +60,18 @@ export function BalanceLedgerPanel() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-          <Wallet className="h-5 w-5" /> Finance Ledger
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Live balance per registration — Total Fee, Amount Paid, and Remaining Balance.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+            <Wallet className="h-5 w-5" /> Finance Ledger
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Live balance per registration — Total Fee, Amount Paid, and Remaining Balance.
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => setImportOpen(true)}>
+          <Upload className="h-4 w-4 mr-2" /> Import Bank Statement
+        </Button>
       </div>
 
       <div className="relative max-w-sm">
@@ -125,6 +132,8 @@ export function BalanceLedgerPanel() {
           </Table>
         </div>
       )}
+
+      <BankStatementImporter open={importOpen} onOpenChange={setImportOpen} onImported={load} />
 
       {activeRow && (
         <LogPaymentDialog
