@@ -28,17 +28,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
+import { addBusinessDays } from "@/lib/business-days";
 import { RegistrationsCsvImporter } from "./registrations-csv-importer";
 import { RegistrationDetailsDialog } from "./registration-details-dialog";
 import { AmendRegistrationDialog } from "./amend-registration-dialog";
 
-const EXPIRY_DAYS = 14;
+const EXPIRY_BUSINESS_DAYS = 10;
 
-// Unpaid pending registrations auto-cancel after EXPIRY_DAYS with no payment
+// Unpaid pending registrations auto-cancel after EXPIRY_BUSINESS_DAYS business days with no payment
 // logged (see app/api/cron/expire-registrations) — surfaces how much time is
 // left so the registration team can prioritize manual follow-up calls.
 function daysUntilExpiry(createdAt: string) {
-  const deadline = new Date(createdAt).getTime() + EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+  const deadline = addBusinessDays(createdAt, EXPIRY_BUSINESS_DAYS).getTime();
   return Math.ceil((deadline - Date.now()) / (24 * 60 * 60 * 1000));
 }
 

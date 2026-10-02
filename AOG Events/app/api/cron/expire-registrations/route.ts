@@ -4,12 +4,21 @@ import { PaymentStatus } from "@prisma/client";
 import { sendExpiryReminderEmail } from "@/lib/email";
 import { cancelRegistration } from "@/lib/cancel-registration";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
+import { addBusinessDays } from "@/lib/business-days";
 
-const WARNING_DAYS = 4;
-const EXPIRY_DAYS = 14;
+const WARNING_BUSINESS_DAYS = 9;
+const EXPIRY_BUSINESS_DAYS = 10;
 
+// A business-day window is never shorter than the same number of calendar
+// days, so this is a safe lower bound for the DB query; the exact cutoff is
+// then checked per registration with addBusinessDays.
 function daysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
+function pastBusinessDays<T extends { createdAt: Date }>(rows: T[], days: number) {
+  const now = Date.now();
+  return rows.filter((r) => addBusinessDays(r.createdAt, days).getTime() <= now);
 }
 
 function registrantName(registration: { formData: any; email: string }) {
@@ -37,12 +46,12 @@ export async function POST(req: NextRequest) {
   const cancelled: string[] = [];
   const errors: { registrationId: string; error: string }[] = [];
 
-  const toWarn = await prisma.registration.findMany({
+  const warnCandidates = await prisma.registration.findMany({
     where: {
       paymentStatus: PaymentStatus.PENDING,
       payments: { none: {} },
       expiryReminderSentAt: null,
-      createdAt: { lte: daysAgo(WARNING_DAYS) },
+      createdAt: { lte: daysAgo(WARNING_BUSINESS_DAYS) },
     },
     include: {
       church: { select: { name: true } },
@@ -50,6 +59,8 @@ export async function POST(req: NextRequest) {
       tickets: { select: { id: true } },
     },
   });
+
+  const toWarn = pastBusinessDays(warnCandidates, WARNING_BUSINESS_DAYS);
 
   for (const registration of toWarn) {
     try {
@@ -73,14 +84,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const toExpire = await prisma.registration.findMany({
+  const expireCandidates = await prisma.registration.findMany({
     where: {
       paymentStatus: PaymentStatus.PENDING,
       payments: { none: {} },
-      createdAt: { lte: daysAgo(EXPIRY_DAYS) },
+      createdAt: { lte: daysAgo(EXPIRY_BUSINESS_DAYS) },
     },
-    select: { id: true, registrationId: true },
+    select: { id: true, registrationId: true, createdAt: true },
   });
+  const toExpire = pastBusinessDays(expireCandidates, EXPIRY_BUSINESS_DAYS);
 
   for (const registration of toExpire) {
     try {
