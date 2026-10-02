@@ -32,7 +32,7 @@ import { RegistrationsCsvImporter } from "./registrations-csv-importer";
 import { RegistrationDetailsDialog } from "./registration-details-dialog";
 import { AmendRegistrationDialog } from "./amend-registration-dialog";
 
-const EXPIRY_DAYS = 5;
+const EXPIRY_DAYS = 14;
 
 // Unpaid pending registrations auto-cancel after EXPIRY_DAYS with no payment
 // logged (see app/api/cron/expire-registrations) — surfaces how much time is

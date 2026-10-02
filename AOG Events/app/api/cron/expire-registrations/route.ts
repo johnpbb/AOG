@@ -6,7 +6,7 @@ import { cancelRegistration } from "@/lib/cancel-registration";
 import { REGISTRATION_CATEGORIES } from "@/lib/types";
 
 const WARNING_DAYS = 4;
-const EXPIRY_DAYS = 5;
+const EXPIRY_DAYS = 14;
 
 function daysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
