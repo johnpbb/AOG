@@ -78,11 +78,16 @@ export function ChurchAutocomplete({ value, onSelect, country, placeholder }: Ch
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={() => setTimeout(() => setOpen(false), 300)}
         placeholder={placeholder ?? "Start typing your church name…"}
       />
       {open && query.trim() && (
-        <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover shadow-md max-h-64 overflow-y-auto">
+        <div
+          className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover shadow-md max-h-64 overflow-y-auto"
+          // Keep focus on the input while pressing a result, so the blur
+          // handler can't unmount the list before the click completes.
+          onMouseDown={(e) => e.preventDefault()}
+        >
           {loading ? (
             <div className="p-3 flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Searching…
