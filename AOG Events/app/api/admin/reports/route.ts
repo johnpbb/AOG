@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
+import { ledgerCategoryLabel, ledgerDisplayName } from "@/lib/ledger-labels";
 import { startOfDay, startOfWeek, startOfMonth } from "date-fns";
 
 type Format = "csv" | "xlsx";
@@ -473,7 +474,7 @@ async function ledgerReport(format: Format) {
   });
 
   const headers = [
-    "Registration ID", "Church", "Category", "Payment Type", "Installments",
+    "Registration ID", "Name", "Church", "Category", "Payment Type", "Installments",
     "Installment Deadline", "Total Fee (FJD)", "Amount Paid (FJD)", "Remaining Balance (FJD)", "Status",
   ];
 
@@ -481,8 +482,9 @@ async function ledgerReport(format: Format) {
     const amountPaid = r.payments.filter((p) => p.status === "CONFIRMED").reduce((s, p) => s + p.amount, 0);
     return [
       r.registrationId,
+      ledgerDisplayName(r.church?.name, r.formData, r.email),
       r.church?.name ?? "",
-      r.category,
+      ledgerCategoryLabel(r.category),
       r.paymentType,
       r.installmentCount ?? "",
       r.installmentDeadline ? new Date(r.installmentDeadline).toLocaleDateString("en-FJ") : "",

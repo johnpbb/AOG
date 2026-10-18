@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ledgerCategoryLabel, ledgerDisplayName } from "@/lib/ledger-labels";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/admin/ledger — Live Balance Ledger: Total Fee | Amount Paid | Remaining
@@ -25,7 +26,9 @@ export async function GET(req: NextRequest) {
       registrationId: r.registrationId,
       churchId: r.churchId,
       churchName: r.church?.name ?? null,
+      name: ledgerDisplayName(r.church?.name, r.formData, r.email),
       category: r.category,
+      categoryLabel: ledgerCategoryLabel(r.category),
       totalFee: r.fee,
       amountPaid,
       remainingBalance: Math.max(0, r.fee - amountPaid),

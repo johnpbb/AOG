@@ -15,7 +15,9 @@ interface LedgerRow {
   id: string;
   registrationId: string;
   churchName: string | null;
+  name: string;
   category: string;
+  categoryLabel: string;
   totalFee: number;
   amountPaid: number;
   remainingBalance: number;
@@ -46,7 +48,7 @@ export function BalanceLedgerPanel() {
     const q = search.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((row) =>
-      [row.registrationId, row.churchName, row.paymentStatus, row.category]
+      [row.registrationId, row.name, row.churchName, row.paymentStatus, row.categoryLabel]
         .filter(Boolean)
         .some((field) => field!.toLowerCase().includes(q))
     );
@@ -77,7 +79,7 @@ export function BalanceLedgerPanel() {
       <div className="relative max-w-sm">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search by registration, church, or status..."
+          placeholder="Search by reg ID, name, category, or status..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-8"
@@ -91,8 +93,9 @@ export function BalanceLedgerPanel() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Registration</TableHead>
-                <TableHead>Church</TableHead>
+                <TableHead>Reg ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead className="text-right">Total Fee</TableHead>
                 <TableHead className="text-right">Paid</TableHead>
@@ -103,7 +106,7 @@ export function BalanceLedgerPanel() {
             <TableBody>
               {filteredRows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
                     No matching entries.
                   </TableCell>
                 </TableRow>
@@ -111,7 +114,8 @@ export function BalanceLedgerPanel() {
               {filteredRows.map((row, idx) => (
                 <TableRow key={row.id} className={idx % 2 === 1 ? "bg-muted/20" : ""}>
                   <TableCell className="font-mono text-sm">{row.registrationId}</TableCell>
-                  <TableCell>{row.churchName ?? "—"}</TableCell>
+                  <TableCell className="font-medium">{row.name}</TableCell>
+                  <TableCell className="text-sm">{row.categoryLabel}</TableCell>
                   <TableCell>
                     <span className="text-sm">
                       {row.paymentType === "partial" ? `Partial (${row.installmentCount ?? "?"})` : "Full"}
