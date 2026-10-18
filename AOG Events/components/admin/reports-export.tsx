@@ -62,6 +62,12 @@ const reportTypes = [
     icon: FileSpreadsheet,
   },
   {
+    id: "attendees",
+    title: "Attendee Roster",
+    description: "One row per person: every church member and individual by name, with ticket number",
+    icon: FileSpreadsheet,
+  },
+  {
     id: "ledger",
     title: "Finance Ledger",
     description: "Total fee, amount paid, and remaining balance per registration",

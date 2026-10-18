@@ -11,7 +11,8 @@ type ReportType =
   | "categories"
   | "checkin"
   | "churches"
-  | "ledger";
+  | "ledger"
+  | "attendees";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,10 @@ function extractName(type: string, formData: unknown, email: string): string {
     );
   }
   return `${d.firstName ?? ""} ${d.lastName ?? ""}`.trim() || email;
+}
+
+function attendeeNames(attendees: { firstName: string; lastName: string }[]): string {
+  return attendees.map((a) => `${a.firstName} ${a.lastName}`.trim()).join("; ");
 }
 
 function extractPhone(formData: unknown): string {
@@ -115,13 +120,14 @@ async function registrationsReport(
       venue: { select: { name: true, city: true } },
       venueAllocations: { include: { venue: { select: { name: true } } } },
       tickets: { select: { ticketNumber: true } },
+      attendees: { select: { firstName: true, lastName: true }, orderBy: { createdAt: "asc" } },
     },
     orderBy: { createdAt: "desc" },
   });
 
   const headers = [
     "Registration ID", "Church ID", "Type", "Category", "Name", "Email", "Phone",
-    "Adults", "Youth", "Kids", "Event", "Venue", "Tickets", "Ticket Numbers",
+    "Adults", "Youth", "Kids", "Attendee Names", "Event", "Venue", "Tickets", "Ticket Numbers",
     "Payment Method", "Payment Status", "Payment Type", "Installments", "Fee (FJD)", "Registered At",
   ];
 
@@ -136,6 +142,7 @@ async function registrationsReport(
     r.adults,
     r.youth,
     r.kids,
+    attendeeNames(r.attendees),
     r.event?.name ?? "",
     r.venueAllocations.length > 0
       ? r.venueAllocations.map((a) => `${a.venue.name} (${a.count} ${a.audienceType})`).join("; ")
@@ -364,13 +371,16 @@ async function churchesReport(format: Format, dateFrom: Date | null) {
 
   const regs = await prisma.registration.findMany({
     where,
-    include: { venue: { select: { name: true, city: true } } },
+    include: {
+      venue: { select: { name: true, city: true } },
+      attendees: { select: { firstName: true, lastName: true }, orderBy: { createdAt: "asc" } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
   const headers = [
     "Church ID", "Church Name", "Denomination", "City", "Pastor Name", "Email", "Phone",
-    "Category", "Adults", "Youth", "Kids", "Attendees", "Venue", "Registration ID", "Payment Status",
+    "Category", "Adults", "Youth", "Kids", "Attendees", "Member Names", "Venue", "Registration ID", "Payment Status",
   ];
 
   const rows = regs.map((r) => {
@@ -389,6 +399,7 @@ async function churchesReport(format: Format, dateFrom: Date | null) {
       r.youth,
       r.kids,
       r.numberOfAttendees,
+      attendeeNames(r.attendees),
       r.venue?.name ?? "",
       r.registrationId,
       r.paymentStatus,
@@ -399,6 +410,55 @@ async function churchesReport(format: Format, dateFrom: Date | null) {
   const filename = `churches-${Date.now()}.${format}`;
   return format === "xlsx"
     ? fileResponse(toXLSX(all, "Church Directory"), filename, format)
+    : fileResponse(Buffer.from(toCSV(all)), filename, format);
+}
+
+async function attendeesReport(
+  format: Format,
+  dateFrom: Date | null,
+  categoryFilter: string
+) {
+  const regWhere: Record<string, unknown> = {};
+  if (dateFrom) regWhere.createdAt = { gte: dateFrom };
+  if (categoryFilter === "churches") regWhere.type = "CHURCH";
+  if (categoryFilter === "individuals") regWhere.type = "INDIVIDUAL";
+
+  const attendees = await prisma.attendee.findMany({
+    where: { registration: regWhere },
+    include: {
+      ticket: { select: { ticketNumber: true } },
+      registration: {
+        select: {
+          registrationId: true, type: true, category: true, formData: true,
+          email: true, paymentStatus: true, createdAt: true,
+        },
+      },
+    },
+    orderBy: [{ registration: { createdAt: "desc" } }, { createdAt: "asc" }],
+  });
+
+  const headers = [
+    "Registration ID", "Church / Registrant", "Category", "First Name", "Last Name",
+    "Age Category", "Email", "Phone", "Ticket Number", "Payment Status",
+  ];
+
+  const rows = attendees.map((a) => [
+    a.registration.registrationId,
+    extractName(a.registration.type, a.registration.formData, a.registration.email),
+    a.registration.category,
+    a.firstName,
+    a.lastName,
+    a.ageCategory,
+    a.email ?? "",
+    a.phone ?? "",
+    a.ticket?.ticketNumber ?? "",
+    a.registration.paymentStatus,
+  ]);
+
+  const all = [headers, ...rows];
+  const filename = `attendees-${Date.now()}.${format}`;
+  return format === "xlsx"
+    ? fileResponse(toXLSX(all, "Attendees"), filename, format)
     : fileResponse(Buffer.from(toCSV(all)), filename, format);
 }
 
@@ -459,6 +519,7 @@ export async function GET(req: NextRequest) {
       case "categories":    return await categoriesReport(format, dateFrom);
       case "checkin":       return await checkinReport(format, dateFrom);
       case "churches":      return await churchesReport(format, dateFrom);
+      case "attendees":     return await attendeesReport(format, dateFrom, category);
       case "ledger":        return await ledgerReport(format);
       default:              return NextResponse.json({ error: "Unknown report type" }, { status: 400 });
     }
