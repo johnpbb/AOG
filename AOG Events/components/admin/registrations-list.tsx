@@ -63,6 +63,13 @@ export function RegistrationsList() {
   const [showImporter, setShowImporter] = useState(false);
   const [detailsReg, setDetailsReg] = useState<any | null>(null);
   const [amendReg, setAmendReg] = useState<any | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) =>
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   useEffect(() => {
     fetchRegistrations();
@@ -136,7 +143,10 @@ export function RegistrationsList() {
     const matchesSearch =
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       reg.registrationId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reg.email.toLowerCase().includes(searchQuery.toLowerCase());
+      reg.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (reg.attendees ?? []).some((a: any) =>
+        `${a.firstName} ${a.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
     const matchesCategory =
       categoryFilter === "all" || reg.category === categoryFilter;
@@ -266,6 +276,27 @@ export function RegistrationsList() {
                             {reg.email}
                             {reg.category === "overseas" && formData.country ? ` · ${formData.country}` : ""}
                           </div>
+                          {reg.attendees?.length > 0 && (
+                            <div className="mt-1">
+                              <button
+                                type="button"
+                                onClick={() => toggleExpanded(reg.id)}
+                                className="text-xs text-primary hover:underline"
+                              >
+                                {expandedIds.has(reg.id) ? "Hide" : "Show"} {reg.attendees.length} member name{reg.attendees.length !== 1 ? "s" : ""}
+                              </button>
+                              {expandedIds.has(reg.id) && (
+                                <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground max-h-48 overflow-y-auto">
+                                  {reg.attendees.map((a: any) => (
+                                    <li key={a.id}>
+                                      {a.firstName} {a.lastName}
+                                      <span className="capitalize"> ({a.ageCategory?.toLowerCase()})</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

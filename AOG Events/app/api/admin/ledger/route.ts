@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
+<<<<<<< HEAD
 import { getCurrentUser } from "@/lib/auth";
+=======
+import { ledgerCategoryLabel, ledgerDisplayName } from "@/lib/ledger-labels";
+>>>>>>> 3c9eea92a9f977b2191e633395a41e427bfb8fc6
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/admin/ledger — Live Balance Ledger: Total Fee | Amount Paid | Remaining
@@ -29,7 +33,9 @@ export async function GET(req: NextRequest) {
       registrationId: r.registrationId,
       churchId: r.churchId,
       churchName: r.church?.name ?? null,
+      name: ledgerDisplayName(r.church?.name, r.formData, r.email),
       category: r.category,
+      categoryLabel: ledgerCategoryLabel(r.category),
       totalFee: r.fee,
       amountPaid,
       remainingBalance: Math.max(0, r.fee - amountPaid),
