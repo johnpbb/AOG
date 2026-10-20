@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/prisma";
-<<<<<<< HEAD
 import { getCurrentUser } from "@/lib/auth";
-=======
 import { ledgerCategoryLabel, ledgerDisplayName } from "@/lib/ledger-labels";
->>>>>>> 3c9eea92a9f977b2191e633395a41e427bfb8fc6
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/admin/ledger — Live Balance Ledger: Total Fee | Amount Paid | Remaining
