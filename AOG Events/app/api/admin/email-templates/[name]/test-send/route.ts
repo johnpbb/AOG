@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { TEMPLATE_NAMES, TemplateName, EmailTemplateContent } from "@/lib/email-defaults";
 import { renderEmailTemplate, pill, divider } from "@/lib/email-renderer";
@@ -171,6 +172,9 @@ function buildDataBlocks(name: TemplateName, vars: Record<string, string>): stri
 }
 
 export async function POST(req: Request, { params }: Params) {
+  if (!(await getCurrentUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { name } = await params;
   if (!TEMPLATE_NAMES.includes(name as TemplateName)) {
     return NextResponse.json({ error: "Unknown template" }, { status: 404 });

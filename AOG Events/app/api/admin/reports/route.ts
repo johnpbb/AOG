@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { startOfDay, startOfWeek, startOfMonth } from "date-fns";
@@ -443,6 +444,11 @@ async function ledgerReport(format: Format) {
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const type = (searchParams.get("type") ?? "registrations") as ReportType;
   const format = (searchParams.get("format") ?? "csv") as Format;

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { DEFAULT_TEMPLATES, TEMPLATE_NAMES } from "@/lib/email-defaults";
 
@@ -16,6 +17,9 @@ async function ensureDefaults() {
 }
 
 export async function GET() {
+  if (!(await getCurrentUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     await ensureDefaults();
     const templates = await prisma.emailTemplate.findMany({

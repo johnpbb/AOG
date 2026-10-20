@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 async function getConfig() {
@@ -10,6 +11,9 @@ async function getConfig() {
 }
 
 export async function GET() {
+  if (!(await getCurrentUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const config = await getConfig();
     return NextResponse.json(config);
@@ -20,6 +24,9 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
+  if (!(await getCurrentUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const body = await req.json();
     const { bankName, bankAccountName, bankAccountNumber, bankBranch, notificationEmail } = body;

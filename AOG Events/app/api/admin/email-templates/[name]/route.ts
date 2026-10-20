@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { DEFAULT_TEMPLATES, TEMPLATE_NAMES, TemplateName } from "@/lib/email-defaults";
 
 type Params = { params: Promise<{ name: string }> };
 
 export async function GET(_req: Request, { params }: Params) {
+  if (!(await getCurrentUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { name } = await params;
   if (!TEMPLATE_NAMES.includes(name as TemplateName)) {
     return NextResponse.json({ error: "Unknown template" }, { status: 404 });
@@ -24,6 +28,9 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 export async function PUT(req: Request, { params }: Params) {
+  if (!(await getCurrentUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { name } = await params;
   if (!TEMPLATE_NAMES.includes(name as TemplateName)) {
     return NextResponse.json({ error: "Unknown template" }, { status: 404 });
@@ -56,6 +63,9 @@ export async function PUT(req: Request, { params }: Params) {
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
+  if (!(await getCurrentUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { name } = await params;
   if (!TEMPLATE_NAMES.includes(name as TemplateName)) {
     return NextResponse.json({ error: "Unknown template" }, { status: 404 });

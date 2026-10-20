@@ -1,9 +1,13 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/admin/ledger — Live Balance Ledger: Total Fee | Amount Paid | Remaining
 // Per-registration is the source of truth; ?groupBy=church rolls it up per church.
 export async function GET(req: NextRequest) {
+  if (!(await getCurrentUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { searchParams } = new URL(req.url);
   const groupByChurch = searchParams.get("groupBy") === "church";
 
