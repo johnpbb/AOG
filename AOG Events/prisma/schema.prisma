@@ -258,6 +258,11 @@ model Registration {
   // out, so the daily cron doesn't re-send it before the day-5 cancellation.
   expiryReminderSentAt DateTime?
 
+  // Set when an auto-cancelled (or admin-cancelled) registration is brought
+  // back. The expiry window then runs from this moment instead of createdAt,
+  // so the daily cron doesn't immediately cancel it again.
+  reactivatedAt DateTime?
+
   payments Payment[]
 
   checkedInAt      DateTime? // Legacy — first ever check-in timestamp (kept for backwards compat)

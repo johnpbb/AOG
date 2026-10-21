@@ -351,7 +351,7 @@ export function RegistrationsList() {
                         </div>
                         {reg.paymentStatus === "PENDING" && (!reg.payments || reg.payments.length === 0) && (
                           (() => {
-                            const daysLeft = daysUntilExpiry(reg.createdAt);
+                            const daysLeft = daysUntilExpiry(reg.reactivatedAt ?? reg.createdAt);
                             return (
                               <div className={`text-xs mt-1 ${daysLeft <= 1 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                                 {daysLeft > 0 ? `Expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}` : "Expiring today"}

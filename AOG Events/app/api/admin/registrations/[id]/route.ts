@@ -18,6 +18,9 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const registration = await prisma.registration.findUnique({
@@ -131,6 +134,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!(await getCurrentUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { id } = await params;
 
   try {

@@ -16,9 +16,21 @@ function daysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
-function pastBusinessDays<T extends { createdAt: Date }>(rows: T[], days: number) {
+// The window runs from reactivatedAt when a cancelled registration was brought
+// back, otherwise from createdAt.
+function pastBusinessDays<T extends { createdAt: Date; reactivatedAt: Date | null }>(rows: T[], days: number) {
   const now = Date.now();
-  return rows.filter((r) => addBusinessDays(r.createdAt, days).getTime() <= now);
+  return rows.filter((r) => addBusinessDays(r.reactivatedAt ?? r.createdAt, days).getTime() <= now);
+}
+
+function olderThan(days: number) {
+  const cutoff = daysAgo(days);
+  return {
+    OR: [
+      { reactivatedAt: null, createdAt: { lte: cutoff } },
+      { reactivatedAt: { lte: cutoff } },
+    ],
+  };
 }
 
 function registrantName(registration: { formData: any; email: string }) {
@@ -51,7 +63,7 @@ export async function POST(req: NextRequest) {
       paymentStatus: PaymentStatus.PENDING,
       payments: { none: {} },
       expiryReminderSentAt: null,
-      createdAt: { lte: daysAgo(WARNING_BUSINESS_DAYS) },
+      ...olderThan(WARNING_BUSINESS_DAYS),
     },
     include: {
       church: { select: { name: true } },
@@ -88,9 +100,9 @@ export async function POST(req: NextRequest) {
     where: {
       paymentStatus: PaymentStatus.PENDING,
       payments: { none: {} },
-      createdAt: { lte: daysAgo(EXPIRY_BUSINESS_DAYS) },
+      ...olderThan(EXPIRY_BUSINESS_DAYS),
     },
-    select: { id: true, registrationId: true, createdAt: true },
+    select: { id: true, registrationId: true, createdAt: true, reactivatedAt: true },
   });
   const toExpire = pastBusinessDays(expireCandidates, EXPIRY_BUSINESS_DAYS);
 
