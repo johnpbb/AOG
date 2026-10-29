@@ -51,6 +51,25 @@ async function describe(tx: any, ref: string) {
   );
 }
 
+// A reduction can't go below the number of named attendees, and the client
+// didn't say who is dropping out. Surplus names are removed from the END of
+// the list (last-added first), which are the people linked to the highest
+// ticket numbers, the same tickets amend cancels first.
+async function dropSurplusNames(tx: any, registrationId: string, c: Change, trimmed: string[]) {
+  for (const [type, target] of [["ADULT", c.adults], ["YOUTH", c.youth]] as const) {
+    const named = await tx.attendee.findMany({
+      where: { registrationId, ageCategory: type },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+    if (named.length > target) {
+      const surplus = named.slice(target).map((a: any) => a.id);
+      await tx.attendee.deleteMany({ where: { id: { in: surplus } } });
+      trimmed.push(`${c.ref}: removed ${surplus.length} named ${type.toLowerCase()} attendee(s) (last in the list)`);
+    }
+  }
+}
+
 async function findTestEntries(tx: any) {
   const upper = (s: string) => s.toUpperCase();
   const candidates = await tx.registration.findMany({
@@ -77,6 +96,7 @@ async function main() {
 
   const ok: string[] = [];
   const failed: { what: string; reason: string }[] = [];
+  const trimmed: string[] = [];
 
   try {
     await prisma.$transaction(
@@ -94,6 +114,7 @@ async function main() {
             async () => {
               const reg = await tx.registration.findUnique({ where: { registrationId: c.ref }, select: { id: true } });
               if (!reg) throw new Error("not found");
+              await dropSurplusNames(tx, reg.id, c, trimmed);
               await amendRegistration(
                 tx,
                 reg.id,
@@ -139,6 +160,10 @@ async function main() {
   ok.forEach((o) => console.log(`  ✓ ${o}`));
   console.log(`\nSkipped (${failed.length}):`);
   failed.forEach((f) => console.log(`  ✗ ${f.what} — ${f.reason}`));
+  if (trimmed.length) {
+    console.log("\nNamed attendees removed:");
+    trimmed.forEach((t) => console.log(`  - ${t}`));
+  }
   if (!apply) console.log("\nDry run only. Re-run with --apply to save.");
 }
 
