@@ -39,6 +39,13 @@ export interface AmendRegistrationInput {
   attendees?: AmendAttendeeInput[] | null;
   /** Free-text reason, recorded in the amendment trail. */
   note?: string | null;
+  /**
+   * Admin-only: let the headcount exceed a church tier's per-registration cap
+   * (small approved overages the public form refuses). Requires a note, is
+   * logged in the amendment trail, and does not lift venue seat capacity or
+   * the shared Individual/Overseas pools.
+   */
+  overrideCaps?: boolean;
 }
 
 export interface AmendRegistrationResult {
@@ -206,7 +213,11 @@ export async function amendRegistration(
   }
 
   const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === registration.category);
-  if (catInfo) {
+  const overrideCaps = !!input.overrideCaps && !!catInfo?.perRegCap;
+  if (overrideCaps && !input.note?.trim()) {
+    throw new AmendError("Exceeding a category limit needs a note explaining why.");
+  }
+  if (catInfo && !overrideCaps) {
     try {
       await checkCategoryCapacity(tx, catInfo, { adults, youth, kids }, registration.id);
     } catch (err) {
@@ -278,6 +289,7 @@ export async function amendRegistration(
     ticketsCancelled,
     attendeesReplaced: !!attendees,
     note: input.note || null,
+    ...(overrideCaps ? { capOverride: true } : {}),
   });
 
   await tx.registration.update({

@@ -42,6 +42,7 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
   const [attendees, setAttendees] = useState<Attendee[] | null>(null);
   const [replaceNames, setReplaceNames] = useState(false);
   const [note, setNote] = useState("");
+  const [overrideCaps, setOverrideCaps] = useState(false);
   const [resendTickets, setResendTickets] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,7 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
     setAttendees(null);
     setReplaceNames(false);
     setNote("");
+    setOverrideCaps(false);
     setResendTickets(true);
     setError(null);
   }, [open, registration]);
@@ -104,6 +106,7 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
           kids: nK,
           attendees: replaceNames ? attendees : null,
           note: note.trim() || null,
+          overrideCaps,
           resendTickets: resendTickets && ticketsIssued,
         }),
       });
@@ -215,6 +218,16 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
+          </div>
+
+          <div className="flex items-start gap-2">
+            <Checkbox id="override-caps" checked={overrideCaps} onCheckedChange={(v) => setOverrideCaps(!!v)} />
+            <div className="grid gap-0.5">
+              <Label htmlFor="override-caps" className="cursor-pointer">Allow numbers above the category limit</Label>
+              <p className="text-xs text-muted-foreground">
+                For approved small overages. A reason is required and is recorded. Venue seat limits still apply.
+              </p>
+            </div>
           </div>
 
           {ticketsIssued && (
