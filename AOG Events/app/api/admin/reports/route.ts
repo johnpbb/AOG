@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { ledgerCategoryLabel, ledgerDisplayName } from "@/lib/ledger-labels";
 import { startOfDay, startOfWeek, startOfMonth } from "date-fns";
+import { GALA_EVENT_SLUG } from "@/lib/types";
 
 type Format = "csv" | "xlsx";
 type ReportType =
@@ -14,7 +15,9 @@ type ReportType =
   | "checkin"
   | "churches"
   | "ledger"
-  | "attendees";
+  | "attendees"
+  | "full-status"
+  | "gala";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -503,6 +506,157 @@ async function ledgerReport(format: Format) {
     : fileResponse(Buffer.from(toCSV(all)), filename, format);
 }
 
+// ── Full status reports (every church, registered or not) ───────────────────
+
+type RegForStatus = {
+  registrationId: string;
+  type: string;
+  category: string;
+  churchId: string | null;
+  email: string;
+  phone: string | null;
+  formData: unknown;
+  numberOfAttendees: number;
+  fee: number;
+  paymentStatus: string;
+  paymentType: string;
+  createdAt: Date;
+  payments: { amount: number; status: string }[];
+  attendees: unknown[];
+};
+
+const confirmedPaid = (r: RegForStatus) =>
+  r.payments.filter((x) => x.status === "CONFIRMED").reduce((a, x) => a + x.amount, 0);
+
+function paymentLabel(fee: number, paid: number) {
+  if (paid <= 0) return "Not paid";
+  return paid >= fee - 0.005 ? "Paid in full" : "Part paid";
+}
+
+// "Complete" = as many names submitted as the registration expects.
+function namesLabel(r: RegForStatus) {
+  if (r.attendees.length === 0) return "None submitted";
+  return r.attendees.length >= r.numberOfAttendees ? "Complete" : "Partial";
+}
+
+function personName(r: RegForStatus) {
+  const d = (r.formData ?? {}) as Record<string, string>;
+  if (r.type === "CHURCH") {
+    return d.pastorName || `${d.pastorFirstName ?? ""} ${d.pastorLastName ?? ""}`.trim();
+  }
+  return `${d.firstName ?? ""} ${d.lastName ?? ""}`.trim();
+}
+
+const isCancelled = (r: RegForStatus) =>
+  r.paymentStatus === "CANCELLED" || r.paymentStatus === "FAILED";
+
+// Live snapshot, never date-filtered: an admin can run it at any time.
+async function fullStatusReport(format: Format) {
+  const [churches, regs] = await Promise.all([
+    prisma.church.findMany({
+      where: { isActive: true },
+      orderBy: [{ country: "asc" }, { district: "asc" }, { name: "asc" }],
+    }),
+    prisma.registration.findMany({
+      where: { event: { slug: { not: GALA_EVENT_SLUG } } },
+      include: { payments: true, attendees: true },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+
+  const headers = [
+    "Type", "Division", "Code", "Name", "Country", "Category", "Registration Status",
+    "Registration ID", "Attendees Expected", "Names Submitted", "Names Status",
+    "Fee (FJD)", "Paid (FJD)", "Balance (FJD)", "Payment Status", "Payment Type",
+    "Contact Name", "Email", "Phone", "Registered On",
+  ];
+  const blank = (n: number) => Array<string>(n).fill("");
+  const line = (
+    type: string, division: string, code: string, name: string, country: string,
+    category: string, status: string, r: RegForStatus | null
+  ) => {
+    if (!r) return [type, division, code, name, country, category, status, ...blank(13)];
+    const paid = confirmedPaid(r);
+    return [
+      type, division, code, name, country, category, status, r.registrationId,
+      r.numberOfAttendees, r.attendees.length, namesLabel(r),
+      r.fee.toFixed(2), paid.toFixed(2), (r.fee - paid).toFixed(2), paymentLabel(r.fee, paid),
+      r.paymentType === "partial" ? "Installments" : "Full",
+      personName(r), r.email, r.phone ?? "", r.createdAt.toISOString().slice(0, 10),
+    ];
+  };
+
+  const rows: unknown[][] = [];
+  const churchIds = new Set(churches.map((c) => c.id));
+  for (const c of churches) {
+    const mine = regs.filter((r) => r.churchId === c.id);
+    const live = mine.filter((r) => !isCancelled(r));
+    if (live.length === 0) {
+      rows.push(line("Church", c.district ?? "", c.id, c.name, c.country, c.category ?? "",
+        mine.length ? "Not registered (cancelled)" : "Not registered", null));
+      continue;
+    }
+    for (const r of live) {
+      rows.push(line("Church", c.district ?? "", c.id, c.name, c.country, c.category ?? "", "Registered", r));
+    }
+  }
+  // Church registrations whose church is no longer on the active list.
+  for (const r of regs.filter((r) => r.type === "CHURCH" && !isCancelled(r) && !(r.churchId && churchIds.has(r.churchId)))) {
+    const d = (r.formData ?? {}) as Record<string, string>;
+    rows.push(line("Church", "", r.churchId ?? "", d.churchName ?? "", "", r.category, "Registered", r));
+  }
+  for (const r of regs.filter((r) => r.type === "INDIVIDUAL")) {
+    rows.push(line(
+      r.category === "overseas" ? "Individual (Overseas)" : "Individual",
+      "", "", personName(r), "", r.category, isCancelled(r) ? "Cancelled" : "Registered", r
+    ));
+  }
+
+  const all = [headers, ...rows];
+  const filename = `full-status-${Date.now()}.${format}`;
+  return format === "xlsx"
+    ? fileResponse(toXLSX(all, "Full Status"), filename, format)
+    : fileResponse(Buffer.from(toCSV(all)), filename, format);
+}
+
+async function galaReport(format: Format) {
+  const regs = await prisma.registration.findMany({
+    where: { event: { slug: GALA_EVENT_SLUG } },
+    include: { payments: true, attendees: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const headers = [
+    "Registration ID", "Ticket Type", "Name", "Church / Organisation", "Email", "Phone",
+    "Seats", "Registration Status", "Names Submitted", "Fee (FJD)", "Paid (FJD)",
+    "Balance (FJD)", "Payment Status", "Payment Method", "Registered On",
+  ];
+  const rows = regs.map((r) => {
+    const d = (r.formData ?? {}) as Record<string, string>;
+    const paid = confirmedPaid(r);
+    const cancelled = isCancelled(r);
+    return [
+      r.registrationId,
+      r.category === "gala-table" ? "Table" : "Seat",
+      personName(r),
+      d.church || d.churchName || "",
+      r.email, r.phone ?? "", r.numberOfAttendees,
+      cancelled ? "Cancelled" : "Registered",
+      r.attendees.length,
+      r.fee.toFixed(2), paid.toFixed(2), (r.fee - paid).toFixed(2),
+      cancelled && paid <= 0 ? "Cancelled" : paymentLabel(r.fee, paid),
+      r.paymentMethod,
+      r.createdAt.toISOString().slice(0, 10),
+    ];
+  });
+
+  const all = [headers, ...rows];
+  const filename = `gala-${Date.now()}.${format}`;
+  return format === "xlsx"
+    ? fileResponse(toXLSX(all, "Gala Dinner"), filename, format)
+    : fileResponse(Buffer.from(toCSV(all)), filename, format);
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
@@ -529,6 +683,8 @@ export async function GET(req: NextRequest) {
       case "churches":      return await churchesReport(format, dateFrom);
       case "attendees":     return await attendeesReport(format, dateFrom, category);
       case "ledger":        return await ledgerReport(format);
+      case "full-status":   return await fullStatusReport(format);
+      case "gala":          return await galaReport(format);
       default:              return NextResponse.json({ error: "Unknown report type" }, { status: 400 });
     }
   } catch (error) {

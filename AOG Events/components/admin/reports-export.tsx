@@ -26,6 +26,18 @@ type CategoryFilter = "all" | "churches" | "individuals";
 
 const reportTypes = [
   {
+    id: "full-status",
+    title: "Full Status Report (AG100)",
+    description: "Every church (registered or not), names submitted, paid or not paid, plus all individuals. Live snapshot.",
+    icon: FileSpreadsheet,
+  },
+  {
+    id: "gala",
+    title: "Gala Dinner Report",
+    description: "Every Gala seat and table booking with payment status and balance. Live snapshot.",
+    icon: FileSpreadsheet,
+  },
+  {
     id: "registrations",
     title: "Registration Report",
     description: "Complete list of all registrations with attendee details",
@@ -235,7 +247,7 @@ export function ReportsExport() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Date range and category filters apply to all reports except Venue Capacity.
+        Date range and category filters apply to all reports except Venue Capacity, Full Status and Gala Dinner, which always show everything.
       </p>
     </div>
   );
