@@ -436,6 +436,7 @@ async function attendeesReport(
         select: {
           registrationId: true, type: true, category: true, formData: true,
           email: true, paymentStatus: true, createdAt: true,
+          adults: true, youth: true, kids: true,
         },
       },
     },
@@ -445,6 +446,7 @@ async function attendeesReport(
   const headers = [
     "Registration ID", "Church / Registrant", "Category", "First Name", "Last Name",
     "Age Category", "Email", "Phone", "Ticket Number", "Payment Status",
+    "Reg. Adults", "Reg. Youth", "Reg. Kids",
   ];
 
   const rows = attendees.map((a) => [
@@ -458,6 +460,9 @@ async function attendeesReport(
     a.phone ?? "",
     a.ticket?.ticketNumber ?? "",
     a.registration.paymentStatus,
+    a.registration.adults,
+    a.registration.youth,
+    a.registration.kids,
   ]);
 
   const all = [headers, ...rows];
@@ -517,6 +522,9 @@ type RegForStatus = {
   phone: string | null;
   formData: unknown;
   numberOfAttendees: number;
+  adults: number;
+  youth: number;
+  kids: number;
   fee: number;
   paymentStatus: string;
   paymentType: string;
@@ -566,7 +574,7 @@ async function fullStatusReport(format: Format) {
 
   const headers = [
     "Type", "Division", "Code", "Name", "Country", "Category", "Registration Status",
-    "Registration ID", "Attendees Expected", "Names Submitted", "Names Status",
+    "Registration ID", "Adults", "Youth", "Kids", "Attendees Expected", "Names Submitted", "Names Status",
     "Fee (FJD)", "Paid (FJD)", "Balance (FJD)", "Payment Status", "Payment Type",
     "Contact Name", "Email", "Phone", "Registered On",
   ];
@@ -575,10 +583,11 @@ async function fullStatusReport(format: Format) {
     type: string, division: string, code: string, name: string, country: string,
     category: string, status: string, r: RegForStatus | null
   ) => {
-    if (!r) return [type, division, code, name, country, category, status, ...blank(13)];
+    if (!r) return [type, division, code, name, country, category, status, ...blank(16)];
     const paid = confirmedPaid(r);
     return [
       type, division, code, name, country, category, status, r.registrationId,
+      r.adults, r.youth, r.kids,
       r.numberOfAttendees, r.attendees.length, namesLabel(r),
       r.fee.toFixed(2), paid.toFixed(2), (r.fee - paid).toFixed(2), paymentLabel(r.fee, paid),
       r.paymentType === "partial" ? "Installments" : "Full",
