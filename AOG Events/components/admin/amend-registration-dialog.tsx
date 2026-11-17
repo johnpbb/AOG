@@ -40,7 +40,7 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
   const [youth, setYouth] = useState("0");
   const [kids, setKids] = useState("0");
   const [attendees, setAttendees] = useState<Attendee[] | null>(null);
-  const [replaceNames, setReplaceNames] = useState(false);
+  const [nameMode, setNameMode] = useState<"none" | "append" | "replace">("none");
   const [note, setNote] = useState("");
   const [overrideCaps, setOverrideCaps] = useState(false);
   const [resendTickets, setResendTickets] = useState(true);
@@ -55,7 +55,7 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
     setYouth(String(registration.youth ?? 0));
     setKids(String(registration.kids ?? 0));
     setAttendees(null);
-    setReplaceNames(false);
+    setNameMode("none");
     setNote("");
     setOverrideCaps(false);
     setResendTickets(true);
@@ -85,13 +85,21 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
   // paymentStatus. Names stay editable.
   const headcountLocked = feeMoves && isPaid;
 
-  const namesMismatch =
-    replaceNames && attendees !== null &&
-    (attendees.filter((a) => a.ageCategory === "ADULT").length !== nA ||
-      attendees.filter((a) => a.ageCategory === "YOUTH").length !== nY);
+  const onFile: Attendee[] = registration.attendees ?? [];
+  const onFileAdults = onFile.filter((a) => a.ageCategory === "ADULT").length;
+  const onFileYouth = onFile.filter((a) => a.ageCategory === "YOUTH").length;
+  const incomingAdults = attendees?.filter((a) => a.ageCategory === "ADULT").length ?? 0;
+  const incomingYouth = attendees?.filter((a) => a.ageCategory === "YOUTH").length ?? 0;
+  // The list may be shorter than the headcount (unnamed seats are fine) but
+  // never longer, matching the server rule in lib/amend-registration.ts.
+  const resultAdults = nameMode === "append" ? onFileAdults + incomingAdults : incomingAdults;
+  const resultYouth = nameMode === "append" ? onFileYouth + incomingYouth : incomingYouth;
+  const namesMismatch = nameMode !== "none" && attendees !== null && (resultAdults > nA || resultYouth > nY);
+  const unnamedAdults = Math.max(0, nA - (nameMode === "none" || !attendees ? onFileAdults : resultAdults));
+  const unnamedYouth = Math.max(0, nY - (nameMode === "none" || !attendees ? onFileYouth : resultYouth));
 
   const canSubmit =
-    newTotal > 0 && !submitting && !namesMismatch && (!replaceNames || attendees !== null);
+    newTotal > 0 && !submitting && !namesMismatch && (nameMode === "none" || attendees !== null);
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -104,7 +112,8 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
           adults: nA,
           youth: nY,
           kids: nK,
-          attendees: replaceNames ? attendees : null,
+          attendees: nameMode !== "none" ? attendees : null,
+          attendeeMode: nameMode === "append" ? "append" : "replace",
           note: note.trim() || null,
           overrideCaps,
           resendTickets: resendTickets && ticketsIssued,
@@ -180,30 +189,54 @@ export function AmendRegistrationDialog({ registration, open, onOpenChange, onAm
           </div>
 
           <div className="space-y-3 pt-1 border-t border-border">
-            <div className="flex items-start gap-2 pt-3">
-              <Checkbox
-                id="replace-names"
-                checked={replaceNames}
-                onCheckedChange={(v) => { setReplaceNames(!!v); setAttendees(null); }}
-              />
-              <div className="grid gap-0.5">
-                <Label htmlFor="replace-names" className="cursor-pointer">Upload the attendee name list</Label>
-                <p className="text-xs text-muted-foreground">
-                  {registration.attendees?.length > 0
-                    ? `Replaces the ${registration.attendees.length} name(s) currently on file and re-points them at the existing tickets.`
-                    : "Names the people on each ticket. Leave unchecked to keep this registration headcount-only."}
-                </p>
-              </div>
+            <div className="pt-3">
+              <p className="text-sm font-medium text-foreground">Attendee names</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {onFile.length > 0
+                  ? `${onFileAdults} of ${registration.adults ?? 0} adult(s) and ${onFileYouth} of ${registration.youth ?? 0} youth named so far.`
+                  : "No names on file — this registration is headcount-only so far."}
+              </p>
             </div>
+            <div className="grid gap-2 text-sm">
+              {([
+                ["none", "Keep names as they are"],
+                ["append", "Add names to the existing list"],
+                ["replace", "Replace the whole list"],
+              ] as const).map(([value, label]) => (
+                <label key={value} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="name-mode"
+                    checked={nameMode === value}
+                    onChange={() => { setNameMode(value); setAttendees(null); }}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            {nameMode === "append" && (
+              <p className="text-xs text-muted-foreground">
+                Upload only the new people. Existing names and their tickets stay exactly as they are.
+              </p>
+            )}
+            {nameMode === "replace" && onFile.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Replaces the {onFile.length} name(s) currently on file and re-points them at the existing tickets.
+              </p>
+            )}
 
-            {replaceNames && (
-              <div className="pl-6">
+            {nameMode !== "none" && (
+              <div className="pl-1">
                 <AttendeeCsvUpload onChange={setAttendees} />
-                {namesMismatch && attendees && (
+                {namesMismatch && (
                   <p className="text-destructive text-xs mt-2">
-                    The list names {attendees.filter((a) => a.ageCategory === "ADULT").length} adult(s) and{" "}
-                    {attendees.filter((a) => a.ageCategory === "YOUTH").length} youth, but the headcount above is set to{" "}
-                    {nA} adult(s) and {nY} youth. These must match.
+                    This would name {resultAdults} adult(s) and {resultYouth} youth, but the headcount above is{" "}
+                    {nA} adult(s) and {nY} youth. Raise the headcount or name fewer people.
+                  </p>
+                )}
+                {attendees && !namesMismatch && (unnamedAdults > 0 || unnamedYouth > 0) && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    After this, {unnamedAdults} adult and {unnamedYouth} youth seat(s) will still be unnamed.
                   </p>
                 )}
               </div>
