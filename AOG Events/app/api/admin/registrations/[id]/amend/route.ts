@@ -49,7 +49,15 @@ export async function POST(
       amendRegistration(
         tx,
         id,
-        { adults: body.adults, youth: body.youth, kids: body.kids, attendees, note: body.note, overrideCaps: body.overrideCaps === true },
+        {
+          adults: body.adults,
+          youth: body.youth,
+          kids: body.kids,
+          attendees,
+          attendeeMode: body.attendeeMode === "append" ? "append" : "replace",
+          note: body.note,
+          overrideCaps: body.overrideCaps === true,
+        },
         { id: currentUser.id, name: currentUser.name }
       )
     );
