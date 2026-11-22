@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save, Building2, Bell, Loader2, CheckCircle } from "lucide-react";
+import { Save, Building2, Bell, Loader2, CheckCircle, CalendarX } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
@@ -12,6 +12,23 @@ interface SiteConfig {
   bankAccountNumber: string;
   bankBranch: string;
   notificationEmail: string;
+  // "YYYY-MM-DDTHH:mm" in Fiji time for the datetime-local input; "" = open.
+  registrationClosesAt: string;
+}
+
+// Fiji is a fixed UTC+12 (no DST since 2022), so convert with a fixed offset
+// rather than the admin's browser timezone.
+const FIJI_OFFSET_MS = 12 * 60 * 60 * 1000;
+function isoToFijiLocal(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return new Date(d.getTime() + FIJI_OFFSET_MS).toISOString().slice(0, 16);
+}
+function fijiLocalToIso(local: string): string | null {
+  if (!local) return null;
+  const d = new Date(`${local}:00+12:00`);
+  return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 const empty: SiteConfig = {
@@ -20,6 +37,7 @@ const empty: SiteConfig = {
   bankAccountNumber: "",
   bankBranch: "",
   notificationEmail: "",
+  registrationClosesAt: "",
 };
 
 export function SettingsPanel() {
@@ -39,6 +57,7 @@ export function SettingsPanel() {
           bankAccountNumber: data.bankAccountNumber ?? "",
           bankBranch: data.bankBranch ?? "",
           notificationEmail: data.notificationEmail ?? "",
+          registrationClosesAt: isoToFijiLocal(data.registrationClosesAt),
         });
       })
       .catch(() => setError("Failed to load settings"))
@@ -56,7 +75,7 @@ export function SettingsPanel() {
       const res = await fetch("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
+        body: JSON.stringify({ ...config, registrationClosesAt: fijiLocalToIso(config.registrationClosesAt) }),
       });
       if (!res.ok) throw new Error("Save failed");
       setSaved(true);
@@ -145,6 +164,40 @@ export function SettingsPanel() {
             />
           </Field>
         </FieldGroup>
+      </div>
+
+      {/* Public registration close */}
+      <div className="rounded-xl border border-border bg-card p-6 space-y-5">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <CalendarX className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground">Public Registration Close</h3>
+            <p className="text-xs text-muted-foreground">
+              From this time the public conference form shows &ldquo;Registration closed&rdquo;. Staff who are logged in
+              can still register people through the form or CSV import. Gala dinner bookings are not affected.
+              Leave blank to keep registration open.
+            </p>
+          </div>
+        </div>
+
+        <Field>
+          <FieldLabel htmlFor="registrationClosesAt">Closes at (Fiji time)</FieldLabel>
+          <div className="flex gap-2">
+            <Input
+              id="registrationClosesAt"
+              type="datetime-local"
+              value={config.registrationClosesAt}
+              onChange={(e) => update("registrationClosesAt", e.target.value)}
+            />
+            {config.registrationClosesAt && (
+              <Button type="button" variant="outline" onClick={() => update("registrationClosesAt", "")}>
+                Clear
+              </Button>
+            )}
+          </div>
+        </Field>
       </div>
 
       {/* Notifications */}

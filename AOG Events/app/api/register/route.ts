@@ -8,6 +8,8 @@ import { verifyTurnstileToken } from "@/lib/turnstile";
 import { createRegistrationRecord, RegistrationCapacityError, RegistrationValidationError } from "@/lib/create-registration";
 import { VenueOversoldError } from "@/lib/venue-assignment";
 import { isGalaCategory, GALA_DETAILS } from "@/lib/types";
+import { getCurrentUser } from "@/lib/auth";
+import { isPublicRegistrationClosed, REGISTRATION_CLOSED_MESSAGE } from "@/lib/registration-window";
 
 export async function POST(request: Request) {
   try {
@@ -46,6 +48,12 @@ export async function POST(request: Request) {
 
     if (!eventId) {
       return NextResponse.json({ error: "eventId is required" }, { status: 400 });
+    }
+
+    // Public registration close: the gala is exempt, and logged-in staff can
+    // still register people (paid-but-unregistered) after the deadline.
+    if (!isGalaCategory(String(category)) && (await isPublicRegistrationClosed()) && !(await getCurrentUser())) {
+      return NextResponse.json({ error: REGISTRATION_CLOSED_MESSAGE }, { status: 403 });
     }
 
     const result = await prisma.$transaction((tx) =>

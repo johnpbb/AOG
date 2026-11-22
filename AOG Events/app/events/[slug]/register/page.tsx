@@ -6,6 +6,8 @@ import { EventRegistrationClient } from "@/components/event-registration-client"
 import { GalaRegistrationClient } from "@/components/gala-registration-client";
 import { sanitizeRichText } from "@/lib/sanitize-html";
 import { GALA_EVENT_SLUG } from "@/lib/types";
+import { getCurrentUser } from "@/lib/auth";
+import { getRegistrationClosesAt, isClosed, formatFijiDateTime, REGISTRATION_CLOSED_MESSAGE } from "@/lib/registration-window";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,13 @@ export default async function EventRegisterPage({ params }: Props) {
   // model, entirely different booking flow (no church path, no category
   // picker, no age split). Keyed off the slug so it needs no schema change.
   const isGala = event.slug === GALA_EVENT_SLUG;
+
+  // After the public close, the conference form is replaced by a notice —
+  // unless a staff member is logged in, in which case they get the form with
+  // a reminder banner. The gala is never gated.
+  const closesAt = isGala ? null : await getRegistrationClosesAt();
+  const closed = isClosed(closesAt);
+  const staffUser = closed ? await getCurrentUser() : null;
 
   const serializedEvent = {
     id: event.id,
@@ -103,8 +112,27 @@ export default async function EventRegisterPage({ params }: Props) {
           <div className="dark">
             {isGala ? (
               <GalaRegistrationClient event={serializedEvent} />
+            ) : closed && !staffUser ? (
+              <div className="rounded-xl border border-brand-orange/40 bg-brand-orange/10 p-8 text-center">
+                <h2 className="text-xl font-bold text-brand-white mb-3">Registration is closed</h2>
+                <p className="text-white/80 text-base max-w-xl mx-auto">{REGISTRATION_CLOSED_MESSAGE}</p>
+                {closesAt && (
+                  <p className="text-white/50 text-sm mt-4">Registration closed {formatFijiDateTime(closesAt)} (Fiji time).</p>
+                )}
+                <p className="text-white/60 text-sm mt-4">
+                  Already registered? You can still{" "}
+                  <Link href="/manage-registration" className="text-brand-orange underline">view or manage your registration</Link>.
+                </p>
+              </div>
             ) : (
-              <EventRegistrationClient event={serializedEvent} />
+              <>
+                {closed && staffUser && (
+                  <div className="mb-6 rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-amber-200">
+                    Public registration is closed. You are signed in as staff ({staffUser.name}), so this form still works for you.
+                  </div>
+                )}
+                <EventRegistrationClient event={serializedEvent} />
+              </>
             )}
           </div>
         </div>

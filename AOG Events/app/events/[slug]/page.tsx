@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { ArrowRight, ArrowLeft, MapPin, Users, Building2 } from "lucide-react";
 import { EventScheduleTabs } from "@/components/event-schedule-tabs";
 import { GALA_EVENT_SLUG } from "@/lib/types";
+import { isPublicRegistrationClosed } from "@/lib/registration-window";
 import { GalaEventDetails } from "@/components/gala-event-details";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,8 @@ export default async function EventPage({ params }: Props) {
   // would advertise an empty room), and says "book tickets" rather than
   // "register".
   const isGala = event.slug === GALA_EVENT_SLUG;
+  const regClosed = !isGala && (await isPublicRegistrationClosed());
+  const ctaLabel = isGala ? "Book Tickets" : regClosed ? "Registration Closed" : "Register Now";
 
   const totalCapacity = event.venues.reduce((s, v) => s + v.capacity, 0);
   const totalRegistered = event.venues.reduce((s, v) => s + v.currentRegistrations, 0);
@@ -54,7 +57,7 @@ export default async function EventPage({ params }: Props) {
             href={`/events/${slug}/register`}
             className="inline-flex items-center gap-2 bg-brand-orange text-brand-white px-[22px] py-[10px] rounded-lg font-bold text-sm no-underline tracking-[0.03em]"
           >
-            {isGala ? "Book Tickets" : "Register Now"} <ArrowRight size={15} />
+            {ctaLabel} <ArrowRight size={15} />
           </Link>
         </div>
       </nav>
@@ -166,7 +169,7 @@ export default async function EventPage({ params }: Props) {
                 href={`/events/${slug}/register`}
                 className="flex items-center justify-center gap-2 bg-brand-orange text-brand-white px-5 py-[13px] rounded-lg font-bold text-sm no-underline tracking-[0.02em]"
               >
-                {isGala ? "Book Tickets" : "Register Now"} <ArrowRight size={15} />
+                {ctaLabel} <ArrowRight size={15} />
               </Link>
             </div>
           </div>

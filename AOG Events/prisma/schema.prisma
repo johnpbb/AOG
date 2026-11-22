@@ -389,6 +389,10 @@ model SiteConfig {
   worldRemitInstructions   String   @default("") @db.Text
   notificationEmail        String   @default("timoci@pacificbedbank.com")
   financeNotificationEmail String   @default("aogfj_finance@connect.com.fj")
+  // When set and in the past, the public conference registration form stops
+  // taking new registrations. Logged-in staff can still register people, and
+  // the gala dinner booking is unaffected. Null = open.
+  registrationClosesAt     DateTime?
   updatedAt                DateTime @updatedAt
 }
 
