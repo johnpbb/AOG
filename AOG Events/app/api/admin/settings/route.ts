@@ -31,10 +31,26 @@ export async function PUT(req: Request) {
     const body = await req.json();
     const { bankName, bankAccountName, bankAccountNumber, bankBranch, notificationEmail } = body;
 
+    // ISO string, null/"" to reopen, or absent to leave unchanged.
+    let registrationClosesAt: Date | null | undefined = undefined;
+    if ("registrationClosesAt" in body) {
+      const raw = body.registrationClosesAt;
+      if (raw === null || raw === "") {
+        registrationClosesAt = null;
+      } else {
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) {
+          return NextResponse.json({ error: "Invalid registration close date" }, { status: 400 });
+        }
+        registrationClosesAt = d;
+      }
+    }
+
+    const data = { bankName, bankAccountName, bankAccountNumber, bankBranch, notificationEmail, registrationClosesAt };
     const config = await prisma.siteConfig.upsert({
       where: { id: "default" },
-      update: { bankName, bankAccountName, bankAccountNumber, bankBranch, notificationEmail },
-      create: { id: "default", bankName, bankAccountName, bankAccountNumber, bankBranch, notificationEmail },
+      update: data,
+      create: { id: "default", ...data },
     });
 
     return NextResponse.json(config);
