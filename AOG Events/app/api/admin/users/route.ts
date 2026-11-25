@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { isStaffRole } from "@/lib/roles";
 
 export async function GET() {
   const currentUser = await getCurrentUser();
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
         name,
         email: String(email).toLowerCase(),
         passwordHash,
-        role: role === "SUPER_ADMIN" || role === "FINANCE" ? role : "ADMIN",
+        role: isStaffRole(role) ? role : "ADMIN",
       },
       select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
     });

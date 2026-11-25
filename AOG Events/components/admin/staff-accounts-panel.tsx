@@ -11,12 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { STAFF_ROLE_LABELS, STAFF_ROLE_OPTIONS, type StaffRole } from "@/lib/roles";
 
 interface StaffUser {
   id: string;
   name: string;
   email: string;
-  role: "SUPER_ADMIN" | "FINANCE" | "ADMIN";
+  role: StaffRole;
   isActive: boolean;
 }
 
@@ -160,9 +161,9 @@ export function StaffAccountsPanel() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="FINANCE">Finance</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                {STAFF_ROLE_OPTIONS.map((r) => (
+                  <SelectItem key={r} value={r}>{STAFF_ROLE_LABELS[r]}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -208,9 +209,9 @@ export function StaffAccountsPanel() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="FINANCE">Finance</SelectItem>
-                          <SelectItem value="ADMIN">Admin</SelectItem>
-                          <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                          {STAFF_ROLE_OPTIONS.map((r) => (
+                            <SelectItem key={r} value={r}>{STAFF_ROLE_LABELS[r]}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     )}
@@ -263,7 +264,7 @@ export function StaffAccountsPanel() {
                     {isSelf && <span className="text-xs text-muted-foreground">(you)</span>}
                     {!u.isActive && <span className="text-xs text-muted-foreground">(deactivated)</span>}
                   </p>
-                  <p className="text-sm text-muted-foreground">{u.email} · {u.role}</p>
+                  <p className="text-sm text-muted-foreground">{u.email} · {STAFF_ROLE_LABELS[u.role] ?? u.role}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   {canEdit && (

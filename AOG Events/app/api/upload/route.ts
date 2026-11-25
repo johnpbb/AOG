@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomBytes } from "crypto";
-import { getCurrentUser } from "@/lib/auth";
+import { requireFullStaff } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -14,10 +14,8 @@ export async function POST(req: NextRequest) {
   try {
     // This writes a file to the server's disk, so it can't stay open to
     // anyone who finds the URL.
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = await requireFullStaff();
+    if (denied) return denied;
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { isStaffRole } from "@/lib/roles";
 
 export async function PATCH(
   req: NextRequest,
@@ -37,6 +38,10 @@ export async function PATCH(
       { error: "Use the password reset link to change another user's password" },
       { status: 400 }
     );
+  }
+
+  if (role !== undefined && !isStaffRole(role)) {
+    return NextResponse.json({ error: "Unknown role" }, { status: 400 });
   }
 
   let passwordHash: string | undefined;

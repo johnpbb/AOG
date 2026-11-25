@@ -25,6 +25,7 @@ type AdminView = "overview" | "events" | "venues" | "registrations" | "ledger" |
 interface AdminSidebarProps {
   activeView: AdminView;
   onViewChange: (view: AdminView) => void;
+  registrationOnly?: boolean;
 }
 
 const navItems = [
@@ -40,7 +41,8 @@ const navItems = [
   { id: "settings" as const, label: "Settings", icon: Settings },
 ];
 
-export function AdminSidebar({ activeView, onViewChange }: AdminSidebarProps) {
+export function AdminSidebar({ activeView, onViewChange, registrationOnly = false }: AdminSidebarProps) {
+  const visibleItems = registrationOnly ? navItems.filter((item) => item.id === "registrations") : navItems;
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const router = useRouter();
 
@@ -83,7 +85,7 @@ export function AdminSidebar({ activeView, onViewChange }: AdminSidebarProps) {
           </div>
 
           <nav className="space-y-1">
-            {navItems.map((item) => (
+            {visibleItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => {

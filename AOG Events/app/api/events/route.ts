@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireFullStaff } from "@/lib/auth";
 
 // GET /api/events — public list of published events (+ admin all)
 export async function GET(req: NextRequest) {
@@ -27,6 +28,8 @@ export async function GET(req: NextRequest) {
 
 // POST /api/events — create a new event (admin)
 export async function POST(req: NextRequest) {
+  const denied = await requireFullStaff();
+  if (denied) return denied;
   try {
     const body = await req.json();
     const {

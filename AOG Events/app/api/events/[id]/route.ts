@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireFullStaff } from "@/lib/auth";
 
 // GET /api/events/[id] — single event (by id or slug)
 export async function GET(
@@ -32,6 +33,8 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requireFullStaff();
+  if (denied) return denied;
   const { id } = await params;
   try {
     const body = await req.json();
@@ -80,6 +83,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requireFullStaff();
+  if (denied) return denied;
   const { id } = await params;
   try {
     await prisma.event.delete({ where: { id } });

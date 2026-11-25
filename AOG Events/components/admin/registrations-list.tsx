@@ -18,7 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Filter, Eye, MoreHorizontal, Download, Upload, Loader2, XCircle, CheckCircle, Pencil } from "lucide-react";
+import { Search, Filter, Eye, MoreHorizontal, Download, Upload, Loader2, XCircle, CheckCircle, Pencil, UserPlus } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -52,7 +53,10 @@ function isManuallySettled(method: string | null | undefined): boolean {
   return MANUALLY_SETTLED_METHODS.includes(String(method ?? ""));
 }
 
-export function RegistrationsList() {
+// registrationOnly: Registration Desk accounts — they can view, register and
+// amend, but approving payments and cancelling are hidden (and refused by the
+// API; see lib/roles.ts).
+export function RegistrationsList({ registrationOnly = false }: { registrationOnly?: boolean } = {}) {
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -177,6 +181,14 @@ export function RegistrationsList() {
           </p>
         </div>
         <div className="flex gap-2">
+          {registrationOnly && (
+            <Button asChild className="gap-2">
+              <Link href="/events" target="_blank">
+                <UserPlus className="h-4 w-4" />
+                New Registration
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" className="gap-2" onClick={() => setShowImporter((v) => !v)}>
             <Upload className="h-4 w-4" />
             Import CSV
@@ -335,7 +347,7 @@ export function RegistrationsList() {
                               : reg.paymentStatus === "CANCELLED" ? "Cancelled"
                               : "Pending"}
                           </Badge>
-                          {reg.paymentStatus === "PENDING" && isManuallySettled(reg.paymentMethod) && (
+                          {!registrationOnly && reg.paymentStatus === "PENDING" && isManuallySettled(reg.paymentMethod) && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -375,7 +387,7 @@ export function RegistrationsList() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            {reg.paymentStatus === "PENDING" && isManuallySettled(reg.paymentMethod) && (
+                            {!registrationOnly && reg.paymentStatus === "PENDING" && isManuallySettled(reg.paymentMethod) && (
                               <DropdownMenuItem
                                 className="text-green-700 focus:text-green-700"
                                 disabled={approvingId === reg.id}
@@ -392,6 +404,7 @@ export function RegistrationsList() {
                               <Pencil className="h-4 w-4 mr-2" />
                               Amend Registration
                             </DropdownMenuItem>
+                            {!registrationOnly && (
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
                               disabled={reg.paymentStatus === "CANCELLED" || cancellingId === reg.id}
@@ -401,6 +414,7 @@ export function RegistrationsList() {
                                 ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Cancelling...</>
                                 : <><XCircle className="h-4 w-4 mr-2" />Cancel Registration</>}
                             </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
