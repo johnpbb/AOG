@@ -139,6 +139,14 @@ export function StaffAccountsPanel() {
       }
     } else {
       payload.role = editForm.role;
+      if (changingPassword) {
+        if (passwordForm.newPassword.length < 8) {
+          setRowError("New password must be at least 8 characters");
+          setSavingEdit(false);
+          return;
+        }
+        payload.newPassword = passwordForm.newPassword;
+      }
     }
 
     const res = await fetch(`/api/admin/users/${id}`, {
@@ -255,6 +263,30 @@ export function StaffAccountsPanel() {
                             value={passwordForm.newPassword}
                             onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                           />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!isSelf && isSuperAdmin && (
+                    <div className="space-y-2">
+                      {!changingPassword ? (
+                        <Button type="button" variant="outline" size="sm" onClick={() => setChangingPassword(true)}>
+                          <KeyRound className="h-4 w-4 mr-2" />
+                          Set new password
+                        </Button>
+                      ) : (
+                        <div className="space-y-1">
+                          <Input
+                            type="password"
+                            autoComplete="new-password"
+                            placeholder={`New password for ${u.name} (min 8 characters)`}
+                            value={passwordForm.newPassword}
+                            onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Saving replaces their current password. Let them know the new one.
+                          </p>
                         </div>
                       )}
                     </div>
