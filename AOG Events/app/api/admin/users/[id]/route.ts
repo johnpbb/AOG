@@ -31,32 +31,28 @@ export async function PATCH(
     );
   }
 
-  // Direct password changes are self-service only; a super admin changing
-  // someone else's account should send them a reset link instead.
-  if (!isSelf && (currentPassword !== undefined || newPassword !== undefined)) {
-    return NextResponse.json(
-      { error: "Use the password reset link to change another user's password" },
-      { status: 400 }
-    );
-  }
-
   if (role !== undefined && !isStaffRole(role)) {
     return NextResponse.json({ error: "Unknown role" }, { status: 400 });
   }
 
+  // Changing your own password needs your current one. A super admin can set
+  // another user's password directly (reaching this point for someone else
+  // already means the caller is a super admin) without knowing the old one.
   let passwordHash: string | undefined;
-  if (isSelf && newPassword !== undefined) {
-    if (!currentPassword) {
-      return NextResponse.json({ error: "Current password is required" }, { status: 400 });
-    }
-    const valid = await bcrypt.compare(currentPassword, currentUser.passwordHash);
-    if (!valid) {
-      return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
+  if (newPassword !== undefined) {
+    if (isSelf) {
+      if (!currentPassword) {
+        return NextResponse.json({ error: "Current password is required" }, { status: 400 });
+      }
+      const valid = await bcrypt.compare(currentPassword, currentUser.passwordHash);
+      if (!valid) {
+        return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
+      }
     }
     if (String(newPassword).length < 8) {
       return NextResponse.json({ error: "New password must be at least 8 characters" }, { status: 400 });
     }
-    passwordHash = await bcrypt.hash(newPassword, 12);
+    passwordHash = await bcrypt.hash(String(newPassword), 12);
   }
 
   try {
