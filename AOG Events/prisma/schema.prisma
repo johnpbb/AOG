@@ -25,6 +25,8 @@ enum UserRole {
   SUPER_ADMIN
   FINANCE
   ADMIN
+  // Registration Desk: view registrations, register people, amend registrations only
+  REGISTRATION
 }
 
 enum PaymentEntryType {

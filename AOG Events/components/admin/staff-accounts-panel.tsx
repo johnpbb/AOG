@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Plus, ShieldCheck, UserX, UserCheck, Pencil, X, Check, KeyRound } from "lucide-react";
+import { Loader2, Plus, ShieldCheck, UserX, UserCheck, Pencil, X, Check, KeyRound, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,13 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { STAFF_ROLE_LABELS, STAFF_ROLE_OPTIONS, type StaffRole } from "@/lib/roles";
 
 interface StaffUser {
   id: string;
   name: string;
   email: string;
-  role: "SUPER_ADMIN" | "FINANCE" | "ADMIN";
+  role: StaffRole;
   isActive: boolean;
+  paymentsConfirmed?: number;
 }
 
 export function StaffAccountsPanel() {
@@ -77,6 +79,22 @@ export function StaffAccountsPanel() {
     if (!res.ok) {
       const data = await res.json();
       setRowError(data.error || "Failed to deactivate account");
+      return;
+    }
+    load();
+  }
+
+  async function handleDelete(u: StaffUser) {
+    const payments = u.paymentsConfirmed ?? 0;
+    const warning = payments > 0
+      ? `\n\n${u.name} confirmed ${payments} payment${payments === 1 ? "" : "s"}. Those payments will stay, but will no longer show who confirmed them. Deactivating keeps that record instead.`
+      : "";
+    if (!confirm(`Permanently delete ${u.name} (${u.email})? This cannot be undone.${warning}`)) return;
+    setRowError(null);
+    const res = await fetch(`/api/admin/users/${u.id}?permanent=true`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json();
+      setRowError(data.error || "Failed to delete account");
       return;
     }
     load();
@@ -160,9 +178,9 @@ export function StaffAccountsPanel() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="FINANCE">Finance</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                {STAFF_ROLE_OPTIONS.map((r) => (
+                  <SelectItem key={r} value={r}>{STAFF_ROLE_LABELS[r]}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -208,9 +226,9 @@ export function StaffAccountsPanel() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="FINANCE">Finance</SelectItem>
-                          <SelectItem value="ADMIN">Admin</SelectItem>
-                          <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                          {STAFF_ROLE_OPTIONS.map((r) => (
+                            <SelectItem key={r} value={r}>{STAFF_ROLE_LABELS[r]}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     )}
@@ -263,7 +281,7 @@ export function StaffAccountsPanel() {
                     {isSelf && <span className="text-xs text-muted-foreground">(you)</span>}
                     {!u.isActive && <span className="text-xs text-muted-foreground">(deactivated)</span>}
                   </p>
-                  <p className="text-sm text-muted-foreground">{u.email} · {u.role}</p>
+                  <p className="text-sm text-muted-foreground">{u.email} · {STAFF_ROLE_LABELS[u.role] ?? u.role}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   {canEdit && (
@@ -284,6 +302,17 @@ export function StaffAccountsPanel() {
                         Reactivate
                       </Button>
                     )
+                  )}
+                  {canDeactivate && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(u)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
                   )}
                 </div>
               </div>

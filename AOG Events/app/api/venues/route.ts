@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireFullStaff } from "@/lib/auth";
 
 // GET /api/venues — list venues (optionally filter by eventId or unassigned)
 export async function GET(req: NextRequest) {
@@ -30,6 +31,8 @@ export async function GET(req: NextRequest) {
 
 // POST /api/venues — create venue (eventId optional)
 export async function POST(req: NextRequest) {
+  const denied = await requireFullStaff();
+  if (denied) return denied;
   try {
     const body = await req.json();
     const { name, description, address, city, capacity, eventId, isActive, audienceType } = body;
