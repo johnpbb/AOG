@@ -80,8 +80,11 @@ export async function PATCH(
   }
 }
 
+// DELETE /api/admin/users/[id] — deactivate by default (keeps the audit
+// trail). With ?permanent=true a super admin removes the account entirely;
+// payments they confirmed stay but lose their "Confirmed by" name.
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const currentUser = await getCurrentUser();
@@ -91,10 +94,24 @@ export async function DELETE(
 
   const { id } = await params;
   if (id === currentUser.id) {
-    return NextResponse.json({ error: "You cannot deactivate your own account" }, { status: 400 });
+    return NextResponse.json({ error: "You cannot deactivate or delete your own account" }, { status: 400 });
   }
 
-  // Deactivate rather than delete — Payment.confirmedBy references must stay intact for the audit trail.
+  const permanent = req.nextUrl.searchParams.get("permanent") === "true";
+
+  if (permanent) {
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!target) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    await prisma.$transaction([
+      prisma.payment.updateMany({ where: { confirmedById: id }, data: { confirmedById: null } }),
+      prisma.user.delete({ where: { id } }), // password reset tokens cascade
+    ]);
+    return NextResponse.json({ ok: true, deleted: true });
+  }
+
+  // Default: deactivate rather than delete, so Payment.confirmedBy keeps its audit trail.
   await prisma.user.update({ where: { id }, data: { isActive: false } });
 
   return NextResponse.json({ ok: true });

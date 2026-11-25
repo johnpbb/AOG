@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Plus, ShieldCheck, UserX, UserCheck, Pencil, X, Check, KeyRound } from "lucide-react";
+import { Loader2, Plus, ShieldCheck, UserX, UserCheck, Pencil, X, Check, KeyRound, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ interface StaffUser {
   email: string;
   role: StaffRole;
   isActive: boolean;
+  paymentsConfirmed?: number;
 }
 
 export function StaffAccountsPanel() {
@@ -78,6 +79,22 @@ export function StaffAccountsPanel() {
     if (!res.ok) {
       const data = await res.json();
       setRowError(data.error || "Failed to deactivate account");
+      return;
+    }
+    load();
+  }
+
+  async function handleDelete(u: StaffUser) {
+    const payments = u.paymentsConfirmed ?? 0;
+    const warning = payments > 0
+      ? `\n\n${u.name} confirmed ${payments} payment${payments === 1 ? "" : "s"}. Those payments will stay, but will no longer show who confirmed them. Deactivating keeps that record instead.`
+      : "";
+    if (!confirm(`Permanently delete ${u.name} (${u.email})? This cannot be undone.${warning}`)) return;
+    setRowError(null);
+    const res = await fetch(`/api/admin/users/${u.id}?permanent=true`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json();
+      setRowError(data.error || "Failed to delete account");
       return;
     }
     load();
@@ -285,6 +302,17 @@ export function StaffAccountsPanel() {
                         Reactivate
                       </Button>
                     )
+                  )}
+                  {canDeactivate && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(u)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
                   )}
                 </div>
               </div>

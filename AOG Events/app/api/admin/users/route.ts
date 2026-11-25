@@ -10,10 +10,17 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
+  const rows = await prisma.user.findMany({
+    select: {
+      id: true, name: true, email: true, role: true, isActive: true, createdAt: true,
+      _count: { select: { paymentsConfirmed: true } },
+    },
     orderBy: { createdAt: "asc" },
   });
+
+  // paymentsConfirmed lets the UI warn before a permanent delete, which
+  // clears "Confirmed by" on those payments.
+  const users = rows.map(({ _count, ...u }) => ({ ...u, paymentsConfirmed: _count.paymentsConfirmed }));
 
   return NextResponse.json({ users });
 }
