@@ -5,6 +5,7 @@ import { Save, Building2, Bell, Loader2, CheckCircle, CalendarX } from "lucide-r
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
+import { TestEmailCard } from "./test-email-card";
 
 interface SiteConfig {
   bankName: string;
@@ -238,6 +239,8 @@ export function SettingsPanel() {
           </span>
         )}
       </div>
+
+      <TestEmailCard />
     </div>
   );
 }
