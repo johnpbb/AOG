@@ -32,11 +32,18 @@ export interface AmendRegistrationInput {
   youth?: number;
   kids?: number;
   /**
-   * When present, replaces the named-attendee list wholesale and must match
-   * the resulting adult/youth headcounts exactly. When absent, existing
-   * names are left alone.
+   * Names to apply (see attendeeMode). When absent, existing names are left
+   * alone. Either way the resulting named list may not exceed the adult/youth
+   * headcounts — it can be shorter, leaving seats unnamed to fill in later.
    */
   attendees?: AmendAttendeeInput[] | null;
+  /**
+   * "replace" (default) swaps the whole list for `attendees`; "append" adds
+   * `attendees` to the names already on file, so only the new people need
+   * supplying. Append rejects anyone already on the list (same first + last
+   * name) rather than creating a duplicate.
+   */
+  attendeeMode?: "replace" | "append";
   /** Free-text reason, recorded in the amendment trail. */
   note?: string | null;
   /**
@@ -97,16 +104,41 @@ async function reconcileTickets(
   return { added: plan.added, cancelled: plan.cancelled };
 }
 
-/** Replaces the attendee rows and re-points each one at an ACTIVE ticket of the matching type. */
-async function replaceAttendees(
+/**
+ * Points every attendee that has no ticket at an ACTIVE ticket of the matching
+ * type that has no attendee. Already-linked pairs are never touched, so an
+ * append can't shuffle which ticket an existing person holds.
+ */
+async function linkUnlinkedAttendees(tx: Prisma.TransactionClient, registrationId: string): Promise<void> {
+  const people = await tx.attendee.findMany({
+    where: { registrationId, ticket: { is: null } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, ageCategory: true },
+  });
+  if (people.length === 0) return;
+
+  const seats = await tx.ticket.findMany({
+    where: { registrationId, status: "ACTIVE", attendeeId: null },
+    orderBy: { ticketNumber: "asc" },
+    select: { id: true, ticketType: true },
+  });
+
+  for (const type of ["ADULT", "YOUTH"] as const) {
+    const ofType = people.filter((a) => a.ageCategory === type);
+    const free = seats.filter((t) => t.ticketType === type);
+    for (let i = 0; i < Math.min(ofType.length, free.length); i++) {
+      await tx.ticket.update({ where: { id: free[i].id }, data: { attendeeId: ofType[i].id } });
+    }
+  }
+}
+
+async function createAttendeeRows(
   tx: Prisma.TransactionClient,
   registrationId: string,
   attendees: AmendAttendeeInput[]
-): Promise<number> {
-  // Deleting clears Ticket.attendeeId via the schema's onDelete: SetNull, so
-  // the tickets themselves (and their QR codes) survive the swap untouched.
-  await tx.attendee.deleteMany({ where: { registrationId } });
-
+): Promise<void> {
+  // Sequential creates keep createdAt ordering stable, which the ticket
+  // linking above relies on.
   for (const a of attendees) {
     await tx.attendee.create({
       data: {
@@ -119,31 +151,23 @@ async function replaceAttendees(
       },
     });
   }
-
-  const created = await tx.attendee.findMany({
-    where: { registrationId },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, ageCategory: true },
-  });
-
-  const tickets = await tx.ticket.findMany({
-    where: { registrationId, status: "ACTIVE" },
-    orderBy: { ticketNumber: "asc" },
-    select: { id: true, ticketType: true },
-  });
-
-  let linked = 0;
-  for (const type of ["ADULT", "YOUTH"] as const) {
-    const people = created.filter((a) => a.ageCategory === type);
-    const seats = tickets.filter((t) => t.ticketType === type);
-    for (let i = 0; i < Math.min(people.length, seats.length); i++) {
-      await tx.ticket.update({ where: { id: seats[i].id }, data: { attendeeId: people[i].id } });
-      linked++;
-    }
-  }
-
-  return linked;
 }
+
+/** Replaces the attendee rows and re-points each one at an ACTIVE ticket of the matching type. */
+async function replaceAttendees(
+  tx: Prisma.TransactionClient,
+  registrationId: string,
+  attendees: AmendAttendeeInput[]
+): Promise<void> {
+  // Deleting clears Ticket.attendeeId via the schema's onDelete: SetNull, so
+  // the tickets themselves (and their QR codes) survive the swap untouched.
+  await tx.attendee.deleteMany({ where: { registrationId } });
+  await createAttendeeRows(tx, registrationId, attendees);
+  await linkUnlinkedAttendees(tx, registrationId);
+}
+
+const nameKey = (a: { firstName: string; lastName: string }) =>
+  `${a.firstName.trim().toLowerCase()} ${a.lastName.trim().toLowerCase()}`;
 
 export async function amendRegistration(
   tx: Prisma.TransactionClient,
@@ -172,12 +196,27 @@ export async function amendRegistration(
   if (total <= 0) throw new AmendError("A registration must have at least one attendee.");
 
   const attendees = input.attendees ?? null;
+  const append = input.attendeeMode === "append";
   if (attendees) {
-    const namedAdults = attendees.filter((a) => a.ageCategory === "ADULT").length;
-    const namedYouth = attendees.filter((a) => a.ageCategory === "YOUTH").length;
-    if (namedAdults !== adults || namedYouth !== youth) {
+    const existing = await tx.attendee.findMany({
+      where: { registrationId: registration.id },
+      select: { firstName: true, lastName: true, ageCategory: true },
+    });
+    if (append) {
+      const onFile = new Set(existing.map(nameKey));
+      const dupes = attendees.filter((a) => onFile.has(nameKey(a))).map((a) => `${a.firstName} ${a.lastName}`);
+      if (dupes.length > 0) {
+        throw new AmendError(
+          `Already on this registration's list: ${dupes.join(", ")}. Remove them from the upload and try again.`
+        );
+      }
+    }
+    const resulting = append ? [...existing, ...attendees] : attendees;
+    const namedAdults = resulting.filter((a) => a.ageCategory === "ADULT").length;
+    const namedYouth = resulting.filter((a) => a.ageCategory === "YOUTH").length;
+    if (namedAdults > adults || namedYouth > youth) {
       throw new AmendError(
-        `The attendee list doesn't match the headcount — it names ${namedAdults} adult(s) and ${namedYouth} youth, but the registration is set to ${adults} adult(s) and ${youth} youth. Kids are counted only and must not appear in the list.`
+        `The attendee list would name ${namedAdults} adult(s) and ${namedYouth} youth, but the registration is set to ${adults} adult(s) and ${youth} youth. Raise the headcount first, or name fewer people. Kids are counted only and must not appear in the list.`
       );
     }
   } else {
@@ -217,7 +256,10 @@ export async function amendRegistration(
   if (overrideCaps && !input.note?.trim()) {
     throw new AmendError("Exceeding a category limit needs a note explaining why.");
   }
-  if (catInfo && !overrideCaps) {
+  // Name-only changes can't move capacity, so skip the cap and venue passes:
+  // re-running them could reject a harmless edit (e.g. a registration already
+  // over its cap via an earlier approved override) or churn venue rows.
+  if (catInfo && !overrideCaps && headcountChanged) {
     try {
       await checkCategoryCapacity(tx, catInfo, { adults, youth, kids }, registration.id);
     } catch (err) {
@@ -229,18 +271,20 @@ export async function amendRegistration(
   // Re-split across venues from scratch for the new counts (same approach as
   // the public amend): a shrink in one bucket can free the room a growth in
   // another needs, so patching per-venue deltas would miss valid outcomes.
-  await releaseVenueAllocations(tx, registration.id);
-  const { allocations, warnings } = await autoAssignVenues(tx, registration.eventId, { adults, youth, kids });
-  if (warnings.length > 0) {
-    // Throwing rolls the release back with the rest of the transaction, so
-    // the registration keeps the allocation it already had.
-    throw new AmendError(`Venue capacity can't absorb this change:\n${warnings.join("\n")}`);
-  }
-  try {
-    await applyVenueAllocations(tx, registration.id, allocations);
-  } catch (err) {
-    if (err instanceof VenueOversoldError) throw new AmendError(err.message);
-    throw err;
+  if (headcountChanged) {
+    await releaseVenueAllocations(tx, registration.id);
+    const { allocations, warnings } = await autoAssignVenues(tx, registration.eventId, { adults, youth, kids });
+    if (warnings.length > 0) {
+      // Throwing rolls the release back with the rest of the transaction, so
+      // the registration keeps the allocation it already had.
+      throw new AmendError(`Venue capacity can't absorb this change:\n${warnings.join("\n")}`);
+    }
+    try {
+      await applyVenueAllocations(tx, registration.id, allocations);
+    } catch (err) {
+      if (err instanceof VenueOversoldError) throw new AmendError(err.message);
+      throw err;
+    }
   }
 
   // Tickets only exist once payment completed; before that there's nothing to
@@ -258,10 +302,19 @@ export async function amendRegistration(
     ticketsCancelled = result.cancelled;
   }
 
-  let attendeesNamed = registration.attendees.length;
   if (attendees) {
-    attendeesNamed = await replaceAttendees(tx, registration.id, attendees);
+    if (append) {
+      await createAttendeeRows(tx, registration.id, attendees);
+      await linkUnlinkedAttendees(tx, registration.id);
+    } else {
+      await replaceAttendees(tx, registration.id, attendees);
+    }
+  } else if (ticketsIssued) {
+    // Headcount growth mints fresh tickets; give any already-named but
+    // unticketed people (from a partial list) a seat.
+    await linkUnlinkedAttendees(tx, registration.id);
   }
+  const attendeesNamed = await tx.attendee.count({ where: { registrationId: registration.id } });
 
   // Church fees are flat per category, so only individual/overseas fees move
   // with the headcount. Block-priced categories (gala Table of 10) re-price
@@ -287,7 +340,10 @@ export async function amendRegistration(
     to: { adults, youth, kids, fee },
     ticketsAdded,
     ticketsCancelled,
-    attendeesReplaced: !!attendees,
+    attendeesReplaced: !!attendees && !append,
+    ...(attendees && append
+      ? { attendeesAdded: attendees.map((a) => `${a.firstName} ${a.lastName} (${a.ageCategory.toLowerCase()})`) }
+      : {}),
     note: input.note || null,
     ...(overrideCaps ? { capOverride: true } : {}),
   });
