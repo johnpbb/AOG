@@ -1,11 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { PaymentStatus } from "@prisma/client";
-import { sendTicketConfirmationEmail } from "@/lib/email";
-import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues, deriveRegistrationTypeLabel, formatPaymentStatusLabel } from "@/lib/tickets";
+import { generateTicketsForRegistration } from "@/lib/tickets";
+import { sendRegistrationTickets } from "@/lib/send-registration-tickets";
 import { getCurrentUser } from "@/lib/auth";
-import { format } from "date-fns";
-import { REGISTRATION_CATEGORIES } from "@/lib/types";
 import { cancelRegistration } from "@/lib/cancel-registration";
 
 // PATCH /api/admin/registrations/[id] — one-click approve for a pending bank
@@ -81,46 +79,21 @@ export async function PATCH(
       }
     });
 
-    // Send tickets confirmation email
-    const formData = registration.formData as Record<string, any>;
-    const registrantName =
-      formData?.pastorName ||
-      (formData?.firstName ? `${formData.firstName} ${formData.lastName ?? ""}`.trim() : null) ||
-      registration.email;
-
-    const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === registration.category);
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const ticketsWithVenue = attachVenuesToTickets(tickets, registration.venueAllocations).map((t) => ({
-      ...t,
-      attendeeName: t.attendee ? `${t.attendee.firstName} ${t.attendee.lastName}`.trim() : undefined,
-    }));
-
-    // This approval path always logs a single FULL Payment, so the
-    // registration is always fully paid by the time we get here.
-    await sendTicketConfirmationEmail({
-      to: registration.email,
-      registrantName: String(registrantName),
-      registrationId: registration.registrationId,
-      category: catInfo?.name ?? registration.category,
-      categoryId: registration.category,
-      registrationType: deriveRegistrationTypeLabel(registration.type, registration.category),
-      churchName: registration.church?.name,
-      district: registration.church?.district ?? undefined,
-      country: registration.church?.country,
-      paymentStatusLabel: formatPaymentStatusLabel(registration.fee, registration.fee),
-      eventName: registration.event?.name ?? "AOG Fiji 100th Anniversary",
-      eventDate: registration.event?.startDate
-        ? format(new Date(registration.event.startDate), "d MMMM yyyy")
-        : "TBC",
-      venueName: summarizeTicketVenues(ticketsWithVenue) || registration.venue?.name || "",
-      venueCity: registration.venue?.city ?? "",
-      tickets: ticketsWithVenue,
-      appUrl,
-    });
+    // Email the tickets. The approval is already committed, so a mail
+    // failure is reported alongside success rather than as a 500 that makes
+    // staff think the approval itself failed (and click Approve again).
+    const ticketEmail = await sendRegistrationTickets(id);
+    const emailNote =
+      ticketEmail.status === "sent"
+        ? `Tickets emailed to ${ticketEmail.to}.`
+        : ticketEmail.status === "failed"
+          ? `The tickets could not be emailed: ${ticketEmail.error}. Use "Resend tickets" to try again.`
+          : `No tickets were emailed: ${ticketEmail.reason}.`;
 
     return NextResponse.json({
       success: true,
-      message: `Registration ${registration.registrationId} approved. Tickets emailed to ${registration.email}.`,
+      ticketEmail,
+      message: `Registration ${registration.registrationId} approved. ${emailNote}`,
     });
   } catch (error: any) {
     console.error("Approve registration error:", error);

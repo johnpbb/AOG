@@ -1,12 +1,19 @@
 import nodemailer from "nodemailer";
 import QRCode from "qrcode";
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, PDFFont, rgb, StandardFonts } from "pdf-lib";
 import { prisma } from "@/lib/prisma";
 import { isGalaCategory, GALA_DETAILS } from "@/lib/types";
 import { DEFAULT_TEMPLATES, EmailTemplateContent, TemplateName } from "./email-defaults";
 import { renderEmailTemplate, pill, divider } from "./email-renderer";
 
+// Pooled so a burst of sends (bank import, bulk ticket reissue, a payment's
+// two or three notifications at once) reuses one authenticated connection
+// instead of logging in to Gmail per message, which Gmail throttles with
+// "too many login attempts" style rejections.
 const transporter = nodemailer.createTransport({
+  pool: true,
+  maxConnections: 2,
+  maxMessages: 100,
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT) || 587,
   secure: false,
@@ -14,6 +21,8 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  connectionTimeout: 30_000,
+  socketTimeout: 120_000,
 });
 
 async function loadTemplate(name: TemplateName): Promise<EmailTemplateContent> {
@@ -72,6 +81,24 @@ const TICKET_ACCENT_COLORS = {
   YOUTH: rgb(1, 0.949, 0),
 } as const;
 
+// The standard PDF fonts only cover WinAnsi (Latin-1 plus a few extras).
+// One name with a macron, a non-Latin script, an emoji or a mangled CSV
+// character (U+FFFD) made pdf-lib throw and the whole ticket email fail.
+// Strip accents where that keeps the letter (Ā → A) and drop the rest.
+let winAnsiChars: Set<number> | null = null;
+function pdfSafe(text: string | null | undefined, font: PDFFont): string {
+  if (!winAnsiChars) winAnsiChars = new Set(font.getCharacterSet());
+  const allowed = winAnsiChars;
+  let out = "";
+  for (const ch of String(text ?? "").replace(/[\r\n\t]+/g, " ")) {
+    const cp = ch.codePointAt(0)!;
+    if (allowed.has(cp)) { out += ch; continue; }
+    const base = ch.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+    if (base && [...base].every((c) => allowed.has(c.codePointAt(0)!))) out += base;
+  }
+  return out.replace(/\s{2,}/g, " ").trim();
+}
+
 async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
   const page = pdfDoc.addPage([595.28, 841.89]); // A4
   const { height } = page.getSize();
@@ -82,9 +109,9 @@ async function addTicketPage(pdfDoc: PDFDocument, p: TicketPageParams) {
   const isGala = p.categoryId ? isGalaCategory(p.categoryId) : false;
 
   const label = (text: string, x: number, y: number) =>
-    page.drawText(text, { x, y, size: 9, font: regular, color: rgb(0.44, 0.5, 0.59) });
+    page.drawText(pdfSafe(text, regular), { x, y, size: 9, font: regular, color: rgb(0.44, 0.5, 0.59) });
   const value = (text: string, x: number, y: number, size = 13, color = rgb(0.1, 0.13, 0.17)) =>
-    page.drawText(text, { x, y, size, font: bold, color });
+    page.drawText(pdfSafe(text, bold), { x, y, size, font: bold, color });
 
   // Header
   page.drawText("AOG FIJI 100TH ANNIVERSARY", {

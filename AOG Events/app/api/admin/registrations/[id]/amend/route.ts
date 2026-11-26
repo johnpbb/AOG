@@ -2,10 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { amendRegistration, AmendError, type AmendAttendeeInput } from "@/lib/amend-registration";
-import { attachVenuesToTickets, summarizeTicketVenues, deriveRegistrationTypeLabel, formatPaymentStatusLabel } from "@/lib/tickets";
-import { sendTicketConfirmationEmail } from "@/lib/email";
-import { REGISTRATION_CATEGORIES } from "@/lib/types";
-import { format } from "date-fns";
+import { sendRegistrationTickets } from "@/lib/send-registration-tickets";
 
 // POST /api/admin/registrations/[id]/amend — edit a registration's headcount
 // and/or named attendee list after the fact, including post-payment (which
@@ -60,12 +57,12 @@ export async function POST(
     let emailSent = false;
     let emailError: string | null = null;
     if (body.resendTickets && result.ticketsIssued) {
-      try {
-        await sendAmendedTickets(id);
-        emailSent = true;
-      } catch (err: any) {
-        console.error("Amend ticket resend error:", err);
-        emailError = "The amendment saved, but the ticket email could not be sent.";
+      const outcome = await sendRegistrationTickets(id);
+      if (outcome.status === "sent") emailSent = true;
+      else if (outcome.status === "failed") {
+        emailError = `The amendment saved, but the ticket email could not be sent: ${outcome.error}`;
+      } else {
+        emailError = `The amendment saved, but no ticket email was sent: ${outcome.reason}.`;
       }
     }
 
@@ -96,66 +93,4 @@ export async function POST(
     console.error("Amend registration error:", error);
     return NextResponse.json({ error: "Failed to amend registration" }, { status: 500 });
   }
-}
-
-/** Re-sends the full current ticket set (post-amendment) to the registrant. */
-async function sendAmendedTickets(id: string) {
-  const registration = await prisma.registration.findUnique({
-    where: { id },
-    include: {
-      tickets: {
-        where: { status: "ACTIVE" },
-        select: {
-          ticketNumber: true,
-          ticketType: true,
-          attendee: { select: { firstName: true, lastName: true } },
-        },
-        orderBy: { ticketNumber: "asc" },
-      },
-      venue: { select: { name: true, city: true } },
-      venueAllocations: { include: { venue: { select: { name: true, city: true } } } },
-      event: { select: { name: true, startDate: true } },
-      church: { select: { name: true, district: true, country: true } },
-      payments: { where: { status: "CONFIRMED" }, select: { amount: true } },
-    },
-  });
-
-  if (!registration || registration.tickets.length === 0) return;
-  if (!registration.email || registration.email === "unknown") return;
-
-  const formData = registration.formData as Record<string, any>;
-  const registrantName =
-    registration.church?.name ||
-    formData?.pastorName ||
-    (formData?.firstName ? `${formData.firstName} ${formData.lastName ?? ""}`.trim() : null) ||
-    registration.registrarName ||
-    registration.email;
-
-  const totalPaid = registration.payments.reduce((sum, p) => sum + p.amount, 0);
-  const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === registration.category);
-  const ticketsWithVenue = attachVenuesToTickets(registration.tickets, registration.venueAllocations).map((t) => ({
-    ...t,
-    attendeeName: t.attendee ? `${t.attendee.firstName} ${t.attendee.lastName}`.trim() : undefined,
-  }));
-
-  await sendTicketConfirmationEmail({
-    to: registration.email,
-    registrantName: String(registrantName),
-    registrationId: registration.registrationId,
-    category: catInfo?.name ?? registration.category,
-    categoryId: registration.category,
-    registrationType: deriveRegistrationTypeLabel(registration.type, registration.category),
-    churchName: registration.church?.name,
-    district: registration.church?.district ?? undefined,
-    country: registration.church?.country,
-    paymentStatusLabel: formatPaymentStatusLabel(registration.fee, totalPaid),
-    eventName: registration.event?.name ?? "AOG Fiji 100th Anniversary",
-    eventDate: registration.event?.startDate
-      ? format(new Date(registration.event.startDate), "d MMMM yyyy")
-      : "TBC",
-    venueName: summarizeTicketVenues(ticketsWithVenue) || registration.venue?.name || "",
-    venueCity: registration.venue?.city ?? "",
-    tickets: ticketsWithVenue,
-    appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-  });
 }

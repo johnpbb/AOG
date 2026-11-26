@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Filter, Eye, MoreHorizontal, Download, Upload, Loader2, XCircle, CheckCircle, Pencil, UserPlus } from "lucide-react";
+import { Search, Filter, Eye, MoreHorizontal, Download, Upload, Loader2, XCircle, CheckCircle, Pencil, UserPlus, Send } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -33,6 +33,7 @@ import { addBusinessDays } from "@/lib/business-days";
 import { RegistrationsCsvImporter } from "./registrations-csv-importer";
 import { RegistrationDetailsDialog } from "./registration-details-dialog";
 import { AmendRegistrationDialog } from "./amend-registration-dialog";
+import { TicketReissuePanel } from "./ticket-reissue-panel";
 
 const EXPIRY_BUSINESS_DAYS = 10;
 
@@ -65,6 +66,8 @@ export function RegistrationsList({ registrationOnly = false }: { registrationOn
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [showImporter, setShowImporter] = useState(false);
+  const [showReissue, setShowReissue] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const [detailsReg, setDetailsReg] = useState<any | null>(null);
   const [amendReg, setAmendReg] = useState<any | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -109,11 +112,34 @@ export function RegistrationsList({ registrationOnly = false }: { registrationOn
       const res = await fetch(`/api/admin/registrations/${reg.id}`, { method: "PATCH" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to approve");
+      if (data.ticketEmail?.status === "sent") toast.success(data.message);
+      else toast.warning(data.message, { duration: 15000 });
       await fetchRegistrations();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  const handleResendTickets = async (reg: any) => {
+    const confirmed = window.confirm(
+      `Email the current ticket pack for ${reg.registrationId} to ${reg.email}?`
+    );
+    if (!confirmed) return;
+
+    setResendingId(reg.id);
+    try {
+      const res = await fetch(`/api/admin/registrations/${reg.id}/resend-tickets`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to resend tickets");
+      if (data.status === "sent") toast.success(`${data.ticketCount} ticket(s) emailed to ${data.to}.`);
+      else if (data.status === "failed") toast.error(`Could not email tickets to ${data.to}: ${data.error}`, { duration: 15000 });
+      else toast.warning(`No tickets sent: ${data.reason}.`);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -189,6 +215,12 @@ export function RegistrationsList({ registrationOnly = false }: { registrationOn
               </Link>
             </Button>
           )}
+          {!registrationOnly && (
+            <Button variant="outline" className="gap-2" onClick={() => setShowReissue((v) => !v)}>
+              <Send className="h-4 w-4" />
+              Reissue Tickets
+            </Button>
+          )}
           <Button variant="outline" className="gap-2" onClick={() => setShowImporter((v) => !v)}>
             <Upload className="h-4 w-4" />
             Import CSV
@@ -199,6 +231,8 @@ export function RegistrationsList({ registrationOnly = false }: { registrationOn
           </Button>
         </div>
       </div>
+
+      {showReissue && !registrationOnly && <TicketReissuePanel onClose={() => setShowReissue(false)} />}
 
       {showImporter && (
         <RegistrationsCsvImporter
@@ -395,6 +429,16 @@ export function RegistrationsList({ registrationOnly = false }: { registrationOn
                               >
                                 <CheckCircle className="h-4 w-4 mr-2" />
                                 Verify & Approve
+                              </DropdownMenuItem>
+                            )}
+                            {!registrationOnly && reg.paymentStatus === "COMPLETED" && (
+                              <DropdownMenuItem
+                                disabled={resendingId === reg.id}
+                                onClick={() => handleResendTickets(reg)}
+                              >
+                                {resendingId === reg.id
+                                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending...</>
+                                  : <><Send className="h-4 w-4 mr-2" />Resend Tickets</>}
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
