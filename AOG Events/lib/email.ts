@@ -446,6 +446,8 @@ interface TicketEmailParams {
   venueCity: string;
   tickets: { ticketNumber: string; ticketType: "ADULT" | "YOUTH"; attendeeName?: string; venueName?: string; venueCity?: string }[];
   appUrl: string;
+  /** Prepended to the subject, e.g. "[TEST] " for the Settings test send. */
+  subjectPrefix?: string;
 }
 
 export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
@@ -523,7 +525,7 @@ export async function sendTicketConfirmationEmail(p: TicketEmailParams) {
   await transporter.sendMail({
     from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
     to: p.to,
-    subject,
+    subject: `${p.subjectPrefix ?? ""}${subject}`,
     html,
     attachments: [
       {
