@@ -46,6 +46,7 @@ export function LogPaymentDialog({ registrationId, registrationLabel, fee, open,
   const [installmentNo, setInstallmentNo] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ticketNotice, setTicketNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
   function loadHistory() {
     setLoadingHistory(true);
@@ -57,6 +58,7 @@ export function LogPaymentDialog({ registrationId, registrationLabel, fee, open,
 
   useEffect(() => {
     if (open) loadHistory();
+    setTicketNotice(null);
   }, [open, registrationId]);
 
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -65,6 +67,7 @@ export function LogPaymentDialog({ registrationId, registrationLabel, fee, open,
   async function handleSubmit() {
     setSubmitting(true);
     setError(null);
+    setTicketNotice(null);
     const res = await fetch(`/api/admin/registrations/${registrationId}/payments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -77,6 +80,15 @@ export function LogPaymentDialog({ registrationId, registrationLabel, fee, open,
       }),
     });
     if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const te = data.ticketEmail;
+      if (te?.status === "sent") {
+        setTicketNotice({ ok: true, text: `Paid in full — ${te.ticketCount} ticket(s) emailed to ${te.to}.` });
+      } else if (te?.status === "failed") {
+        setTicketNotice({ ok: false, text: `Payment saved, but the tickets could not be emailed to ${te.to}: ${te.error}. Use "Resend tickets" to try again.` });
+      } else if (te?.status === "skipped") {
+        setTicketNotice({ ok: false, text: `Payment saved, but no tickets were emailed: ${te.reason}.` });
+      }
       setAmount("");
       setReferenceNote("");
       setInstallmentNo("");
@@ -158,6 +170,9 @@ export function LogPaymentDialog({ registrationId, registrationLabel, fee, open,
           </FieldGroup>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
+          {ticketNotice && (
+            <p className={`text-sm ${ticketNotice.ok ? "text-green-600" : "text-amber-600"}`}>{ticketNotice.text}</p>
+          )}
 
           <div>
             <p className="text-sm font-medium text-foreground mb-2">Payment History (Audit Trail)</p>

@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { generateTicketsForRegistration, attachVenuesToTickets, summarizeTicketVenues, deriveRegistrationTypeLabel, formatPaymentStatusLabel } from "@/lib/tickets";
-import { sendFinanceNotificationEmail, sendBalanceUpdateEmail, sendTicketConfirmationEmail } from "@/lib/email";
-import { REGISTRATION_CATEGORIES } from "@/lib/types";
-import { format } from "date-fns";
+import { generateTicketsForRegistration } from "@/lib/tickets";
+import { sendFinanceNotificationEmail, sendBalanceUpdateEmail } from "@/lib/email";
+import { sendRegistrationTickets } from "@/lib/send-registration-tickets";
 
 export class RecordPaymentError extends Error {
   constructor(public code: "NOT_FOUND" | "CANCELLED") {
@@ -80,7 +79,6 @@ export async function recordPayment(input: RecordPaymentInput) {
   // ── Notifications (best-effort, don't fail the payment if email fails) ──
   const siteConfig = await prisma.siteConfig.findUnique({ where: { id: "default" } });
   const remainingBalance = Math.max(0, result.registration.fee - result.totalPaid);
-  const catInfo = REGISTRATION_CATEGORIES.find((c) => c.id === result.registration.category);
 
   const formData = result.registration.formData as Record<string, any>;
   const registrantName =
@@ -89,11 +87,6 @@ export async function recordPayment(input: RecordPaymentInput) {
     (formData?.firstName ? `${formData.firstName} ${formData.lastName ?? ""}`.trim() : null) ||
     result.registration.registrarName ||
     result.registration.email;
-  const ticketsWithVenue = attachVenuesToTickets(result.tickets, result.registration.venueAllocations).map((t) => ({
-    ...t,
-    attendeeName: t.attendee ? `${t.attendee.firstName} ${t.attendee.lastName}`.trim() : undefined,
-  }));
-
   await Promise.allSettled([
     siteConfig?.financeNotificationEmail
       ? sendFinanceNotificationEmail({
@@ -116,31 +109,15 @@ export async function recordPayment(input: RecordPaymentInput) {
           fullyPaid: result.fullyPaid,
         })
       : Promise.resolve(),
-    result.fullyPaid && result.registration.email !== "unknown"
-      ? sendTicketConfirmationEmail({
-          to: result.registration.email,
-          registrantName: result.registration.registrarName || result.registration.email,
-          registrationId: result.registration.registrationId,
-          category: catInfo?.name ?? result.registration.category,
-          categoryId: result.registration.category,
-          registrationType: deriveRegistrationTypeLabel(result.registration.type, result.registration.category),
-          churchName: result.registration.church?.name,
-          district: result.registration.church?.district ?? undefined,
-          country: result.registration.church?.country,
-          paymentStatusLabel: formatPaymentStatusLabel(result.registration.fee, result.totalPaid),
-          eventName: result.registration.event?.name ?? "AOG Fiji 100th Anniversary",
-          eventDate: result.registration.event?.startDate
-            ? format(new Date(result.registration.event.startDate), "d MMMM yyyy")
-            : "TBC",
-          venueName: summarizeTicketVenues(ticketsWithVenue) || result.registration.venue?.name || "",
-          venueCity: result.registration.venue?.city ?? "",
-          tickets: ticketsWithVenue,
-          appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-        })
-      : Promise.resolve(),
   ]);
 
+  // Tickets go out through the shared sender, which reloads the ACTIVE
+  // tickets and records the outcome. Returned so the payment dialog can say
+  // whether they actually went instead of failing silently.
+  const ticketEmail = result.fullyPaid ? await sendRegistrationTickets(id) : null;
+
   return {
+    ticketEmail,
     payment: result.payment,
     totalPaid: result.totalPaid,
     remainingBalance,
